@@ -102,16 +102,17 @@ class FastThresholdScan(Fei4RunBase):
                 cal_lvl1_command = self.register.get_commands("CAL")[0] + self.register.get_commands("zeros", length=40)[0] + self.register.get_commands("LV1")[0]
                 scan_loop(self, cal_lvl1_command, repeat_command=self.n_injections, use_delay=True, mask_steps=self.mask_steps, enable_mask_steps=self.enable_mask_steps, enable_double_columns=enable_double_columns, same_mask_for_all_dc=True, eol_function=None, digital_injection=False, enable_shift_masks=self.enable_shift_masks, disable_shift_masks=self.disable_shift_masks, restore_shift_masks=False, mask=invert_pixel_mask(self.register.get_pixel_register_value('Enable')) if self.use_enable_mask else None, double_column_correction=self.pulser_dac_correction)
 
-            if not self.start_condition_triggered or self.data_points > self.minimum_data_points:  # speed up, only create histograms when needed. Python is much too slow here.
+            if not self.start_condition_triggered or self.data_points > self.curr_minimum_data_points:  # speed up, only create histograms when needed. Python is much too slow here.
                 if not self.start_condition_triggered and not self.record_data:
                     logging.info('Testing for start condition: %s %d', 'PlsrDAC', self.scan_parameter_value)
                 if not self.stop_condition_triggered and self.record_data:
                     logging.info('Testing for stop condition: %s %d', 'PlsrDAC', self.scan_parameter_value)
 
                 col, row = convert_data_array(array=self.read_data(), filter_func=is_data_record, converter_func=get_col_row_array_from_data_record_array)
-                if np.any(np.logical_and(col < 1, col > 80)) or np.any(np.logical_and(row < 1, row > 336)):  # filter bad data records that can happen
-                    logging.warning('There are undefined %d data records (e.g. random data)', np.count_nonzero(np.logical_and(col < 1, col > 80)) + np.count_nonzero(np.logical_and(row < 1, row > 336)))
-                    col, row = col[np.logical_and(col > 0, col <= 80)], row[np.logical_and(row > 0, row <= 336)]
+                select = (col > 0) & (col <= 80) & (row > 0) & (row <= 336)
+                if np.count_nonzero(~select):  # filter bad data records that can happen
+                    logging.warning('There are bad %d data records', np.count_nonzero(~select))
+                    col, row = col[select], row[select]
                 occupancy_array = hist_2d_index(col - 1, row - 1, shape=(80, 336))
                 self.scan_condition(occupancy_array)
 
