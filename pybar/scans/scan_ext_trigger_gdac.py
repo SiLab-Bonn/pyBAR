@@ -50,6 +50,10 @@ class ExtTriggerGdacScan(ExtTriggerScan):
     def handle_data(self, data, new_file=True, flush=True):
         super(ExtTriggerGdacScan, self).handle_data(data=data, new_file=new_file, flush=flush)
 
+    def start_trigger(self):
+        super(ExtTriggerGdacScan, self).start_trigger()
+        self.connect_cancel(["abort"])  # here Ctrl-C should abort complete run
+
     def get_gdacs_from_interpolated_calibration(self, calibration_file, thresholds):
         logging.info('Interpolate GDAC calibration for the thresholds %s', str(thresholds))
         with tb.open_file(calibration_file, mode="r") as in_file_calibration_h5:  # read calibration file from calibrate_threshold_gdac scan
