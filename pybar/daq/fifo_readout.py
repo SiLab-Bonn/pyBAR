@@ -14,6 +14,9 @@ from pybar.daq.readout_utils import data_array_from_data_iterable, convert_data_
 
 data_iterable = ("data", "timestamp_start", "timestamp_stop", "error")
 
+WRITE_INTERVAL = 1.0  # interval until callback is called in seconds
+READOUT_INTERVAL = 0.05  # interval to poll data from RO system in seconds
+
 
 class RxSyncError(Exception):
     pass
@@ -53,8 +56,8 @@ class FifoReadout(object):
         self.converter_func = [None]
         self.fifo_select = [None]
         self.enabled_fe_channels = None
-        self.readout_interval = 0.05  # in seconds
-        self.write_interval = 1.0  # in seconds
+        self.readout_interval = READOUT_INTERVAL
+        self.write_interval = WRITE_INTERVAL
         self.watchdog_interval = 1.0  # in seconds
         self._moving_average_time_period = 10.0  # in seconds
         self._n_empty_reads = 3  # number of empty reads before stopping FIFO readout
