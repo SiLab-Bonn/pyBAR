@@ -29,6 +29,25 @@ The features of the host software in Python:
 - ultra fast raw data analysis, event and cluster building, and raw data validity checks
 - real-time online monitor with GUI
 
+## Publications
+
+The pyBAR readout system was extensively used for various high-energy particle physics experiments and for detector R&D.
+
+### Proceedings and Papers
+
+1. Serially powered pixel detector prototype (at Bonn) for the ATLAS High-Luminosity LHC (HL-LHC) upgrade (24 FEI4 chips). DOI: [10.1088/1748-0221/12/03/c03045](https://doi.org/10.1088/1748-0221/12/03/c03045), DOI: [10.1088/1748-0221/12/03/p03004](https://doi.org/10.1088/1748-0221/12/03/p03004)
+2. Stave 0 demonstrator (at CERN) for the ATLAS High-Luminosity LHC (HL-LHC) upgrade (28 FEI4 chips): document in preparation
+3. [SHiP experiment](https://cds.cern.ch/record/2286844) at the CERN Super Proton Synchrotron (SPS) facility to help with the track reconstruction (24 FEI4 chips): document in preparation
+4. BEAST/TPC experiment at the SuperKEKB facility to measure the beam/radiation background (8 FEI4 chips). DOI: [10.1016/j.nima.2018.05.071](https://doi.org/10.1016/j.nima.2018.05.071)
+5. BEAST/FANGS experiment at the SuperKEKB facility to measure the beam/radiation background (15 FEI4 chips): document in preparation
+6. TPC to measure nuclear recoil for dark matter search. DOI: [10.1016/j.nima.2019.06.037](https://dx.doi.org/10.1016/j.nima.2019.06.037)
+7. Detector tests (pCVD diamond) for the ATLAS Diamond Beam Monitor (DBM) and implementation of a novel threshold tuning method. DOI: [10.1088/1748-0221/12/03/C03072](https://dx.doi.org/10.1088/1748-0221/12/03/C03072)
+8. Beam monitor for the [beamline for detector tests](http://accelconf.web.cern.ch/AccelConf/IPAC2013/papers/thpfi006.pdf) at ELSA, Bonn, Germany.
+9. Various other detector tests at [CERN SPS](http://sba.web.cern.ch) (Geneva, Switzerland), [DESY II](https://testbeam.desy.de) (Hamburg, Germany), and [ELSA](https://www-elsa.physik.uni-bonn.de) (Bonn, Germany).
+    - Silicon detecors: DOI: [10.1088/1748-0221/12/06/P06020](https://dx.doi.org/10.1088/1748-0221/12/06/P06020)
+    - 3D pCVD diamond detectors: document submitted
+
+
 ## Installation
 
 The following packages are required for pyBAR's core functionality:
