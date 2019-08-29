@@ -3,8 +3,12 @@
 
 pyBAR - Bonn ATLAS Readout in Python
 
+## Intended Use
+
 PyBAR is a versatile readout and test system for the ATLAS FEI4(A/B) pixel readout chip. It uses the [basil](https://github.com/SiLab-Bonn/basil) framework to access the readout hardware.
-PyBAR's FPGA firmware and host software includes support for different hardware platforms.
+PyBAR's host software supports different hardware platforms for which FPGA firmware is provided.
+
+### Features
 
 PyBAR is *not only* targeting experienced users and developers. The easy-to-use scripts allow a quick setup and start. PyBAR is a very flexible readout and test system and provides the capability to conduct tests and characterization measurements of individual chips, and tests of large-scale detectors with multiple multi-chip modules and multiple readout boards.
 
@@ -32,26 +36,11 @@ The features of the host software in Python:
 - ultra fast raw data analysis, event and cluster building, and raw data validity checks
 - real-time online monitor with GUI
 
-## Publications
-
-The pyBAR readout system was extensively used for various high-energy particle physics experiments and for detector R&D.
-
-### Proceedings and Papers
-
-1. Serially powered pixel detector prototype (at Bonn) for the ATLAS High-Luminosity LHC (HL-LHC) upgrade (24 FEI4 chips). DOI: [10.1088/1748-0221/12/03/c03045](https://doi.org/10.1088/1748-0221/12/03/c03045), DOI: [10.1088/1748-0221/12/03/p03004](https://doi.org/10.1088/1748-0221/12/03/p03004)
-2. Stave 0 demonstrator (at CERN) for the ATLAS High-Luminosity LHC (HL-LHC) upgrade (28 FEI4 chips): document in preparation
-3. [SHiP experiment](https://cds.cern.ch/record/2286844) at the CERN Super Proton Synchrotron (SPS) facility to help with the track reconstruction (24 FEI4 chips): document in preparation
-4. BEAST/TPC experiment at the SuperKEKB facility to measure the beam/radiation background (8 FEI4 chips). DOI: [10.1016/j.nima.2018.05.071](https://doi.org/10.1016/j.nima.2018.05.071)
-5. BEAST/FANGS experiment at the SuperKEKB facility to measure the beam/radiation background (15 FEI4 chips): document in preparation
-6. TPC to measure nuclear recoil for dark matter search. DOI: [10.1016/j.nima.2019.06.037](https://dx.doi.org/10.1016/j.nima.2019.06.037)
-7. Detector tests (pCVD diamond) for the ATLAS Diamond Beam Monitor (DBM) and implementation of a novel threshold tuning method. DOI: [10.1088/1748-0221/12/03/C03072](https://dx.doi.org/10.1088/1748-0221/12/03/C03072)
-8. Beam monitor for the [beamline for detector tests](http://accelconf.web.cern.ch/AccelConf/IPAC2013/papers/thpfi006.pdf) at ELSA, Bonn, Germany.
-9. Various other detector tests at [CERN SPS](http://sba.web.cern.ch) (Geneva, Switzerland), [DESY II](https://testbeam.desy.de) (Hamburg, Germany), and [ELSA](https://www-elsa.physik.uni-bonn.de) (Bonn, Germany).
-    - Silicon detecors: DOI: [10.1088/1748-0221/12/06/P06020](https://dx.doi.org/10.1088/1748-0221/12/06/P06020)
-    - 3D pCVD diamond detectors: document submitted
-
-
 ## Installation
+
+Python 2.7 must be used. There are many ways to install Python, though we recommend using [Anaconda Python](https://www.anaconda.com/distribution/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
+
+### Prerequisites
 
 The following packages are required for pyBAR's core functionality:
   ```
@@ -99,14 +88,16 @@ To enable support for USB devices (MIO2), the following additional packages are 
 The installation procedure depends on the operating system and software environment.
 Please read our [Step-by-step Installation Guide](https://github.com/SiLab-Bonn/pyBAR/wiki/Step-by-step-Installation-Guide) carefully.
 
-After the obove steps are completed, clone the pyBAR git repository and then run the following commands from the within project folder:
+### Installation of pyBAR
 
-1. Install with:
+After the obove steps are completed, clone the pyBAR git repository.
+
+1. Use the following command to install pyBAR (from within the repository folder):
    ```
-   python setup.py develop
+   pip install -e .
    ```
 
-2. Testing (from within the pybar/testing folder):
+2. For testing the basic functionality of pyBAR, execute the following command (from within the pybar/testing folder):
    ```
    nosetests test_analysis.py
    ```
@@ -115,7 +106,38 @@ After the obove steps are completed, clone the pyBAR git repository and then run
 
 Please note the [Wiki](https://github.com/SiLab-Bonn/pyBAR/wiki) and the [User Guide](https://github.com/SiLab-Bonn/pyBAR/wiki/User-Guide).
 
-## Support
+## Contributing to pyBAR
 
-To subscribe to the pyBAR mailing list, click [here](https://e-groups.cern.ch/e-groups/EgroupsSubscription.do?egroupName=pybar-devel). Please ask questions on the pyBAR mailing list [pybar-devel@cern.ch](mailto:pybar-devel@cern.ch?subject=bug%20report%20%2F%20feature%20request) (subscription required) or file a new bug report / feature request [here](https://github.com/SiLab-Bonn/pyBAR/issues/new).
+### Bug Report / Feature Request / Question
 
+Please use GitHub's [issue tracker](https://github.com/SiLab-Bonn/pyBAR/issues).
+
+*For CERN users*: Feel free to subscribe to the [pyBAR mailing list](https://e-groups.cern.ch/e-groups/EgroupsSubscription.do?egroupName=pybar-devel).
+
+### Contributing Code to pyBAR
+
+1. Fork the project.
+2. Clone your fork and/or get the latest changes from upstream.
+2. Create a topic branch.
+3. Modify the code and commit your changes in logical chunks.
+4. Locally rebase the upstream branch into your topic branch.
+5. Push your topic branch to your fork.
+6. Open a [Pull Request (PR)](https://help.github.com/en/articles/about-pull-requests) with clear title and description about the modifications.
+
+## Publications
+
+The pyBAR readout system was extensively used for various high-energy particle physics experiments and for detector R&D.
+
+### Proceedings and Papers
+
+1. Serially powered pixel detector prototype (at Bonn) for the ATLAS High-Luminosity LHC (HL-LHC) upgrade (24 FEI4 chips). DOI: [10.1088/1748-0221/12/03/c03045](https://doi.org/10.1088/1748-0221/12/03/c03045), DOI: [10.1088/1748-0221/12/03/p03004](https://doi.org/10.1088/1748-0221/12/03/p03004)
+2. Stave 0 demonstrator (at CERN) for the ATLAS High-Luminosity LHC (HL-LHC) upgrade (28 FEI4 chips): document in preparation
+3. [SHiP experiment](https://cds.cern.ch/record/2286844) at the CERN Super Proton Synchrotron (SPS) facility to help with the track reconstruction (24 FEI4 chips): document in preparation
+4. BEAST/TPC experiment at the SuperKEKB facility to measure the beam/radiation background (8 FEI4 chips). DOI: [10.1016/j.nima.2018.05.071](https://doi.org/10.1016/j.nima.2018.05.071)
+5. BEAST/FANGS experiment at the SuperKEKB facility to measure the beam/radiation background (15 FEI4 chips): document in preparation
+6. TPC to measure nuclear recoil for dark matter search. DOI: [10.1016/j.nima.2019.06.037](https://dx.doi.org/10.1016/j.nima.2019.06.037)
+7. Detector tests (pCVD diamond) for the ATLAS Diamond Beam Monitor (DBM) and implementation of a novel threshold tuning method. DOI: [10.1088/1748-0221/12/03/C03072](https://dx.doi.org/10.1088/1748-0221/12/03/C03072)
+8. Beam monitor for the [beamline for detector tests](http://accelconf.web.cern.ch/AccelConf/IPAC2013/papers/thpfi006.pdf) at ELSA, Bonn, Germany.
+9. Various other detector tests at [CERN SPS](http://sba.web.cern.ch) (Geneva, Switzerland), [DESY II](https://testbeam.desy.de) (Hamburg, Germany), and [ELSA](https://www-elsa.physik.uni-bonn.de) (Bonn, Germany).
+    - Silicon detecors: DOI: [10.1088/1748-0221/12/06/P06020](https://dx.doi.org/10.1088/1748-0221/12/06/P06020)
+    - 3D pCVD diamond detectors: document submitted
