@@ -50,7 +50,7 @@ class EudaqExtTriggerScan(ExtTriggerScan):
         self.remaining_data = np.zeros((0,), dtype=np.uint32)  # initialize array of zero length
         self.trigger_mode = self.dut['TLU']['TRIGGER_MODE']
 
-        with self.readout(**self.scan_parameters._asdict()):
+        with self.readout(no_data_timeout=self.no_data_timeout):
             pp.StartingRun = True  # set status and send BORE
             got_data = False
             while not self.stop_run.wait(1.0):

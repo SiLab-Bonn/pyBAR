@@ -127,7 +127,7 @@ class StopModeExtTriggerScan(Fei4RunBase):
 
         self.register_utils.set_command(command)
 
-        with self.readout(no_data_timeout=self.no_data_timeout, **self.scan_parameters._asdict()):
+        with self.readout(no_data_timeout=self.no_data_timeout):
             got_data = False
             start = time()
             while not self.stop_run.wait(1.0):
