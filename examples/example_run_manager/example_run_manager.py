@@ -43,19 +43,19 @@ if __name__ == "__main__":
     # Running a single scan and changing default run configuration (_default_run_conf):
     join = runmngr.run_run(run=AnalogScan, run_conf={"scan_parameters": [('PlsrDAC', 500)], "n_injections": 1000}, use_thread=True)  # run_run returns a function object when use_thread is True
     status = join()  # waiting here for finishing the run, press Ctrl-C to abort the run at any time
-    print 'Status:', status  # will wait for run to be finished and returns run status
+    print('Status: %s' % (status,))  # will wait for run to be finished and returns run status
     #
     # Or use a run configuration file:
     status = runmngr.run_run(run=AnalogScan, run_conf="example_run_manager_run_config.txt")  # using no thread
-    print 'Status:', status
+    print('Status: %s' % (status,))
     #
     # Example for a loop of runs, which is failing:
     for delay in range(14, 50, 16):
         join = runmngr.run_run(ExtTriggerScan, run_conf={"trigger_delay": delay, "no_data_timeout": 60}, use_thread=True)  # use thread
-        print 'Status:', join(timeout=5)  # join has a timeout, return None if run has not yet finished
+        print('Status: %s' % (join(timeout=5),))  # join has a timeout, return None if run has not yet finished
         runmngr.abort_current_run("Calling abort_current_run(). This scan was aborted by intention")  # stopping/aborting run from outside (same effect has Ctrl-C)
         if join() != run_status.finished:  # status OK?
-            print 'ERROR! This error was made by intention!'
+            print('ERROR! This error was made by intention!')
             break  # jump out
     #
     # The configuration.yaml can be extended to change the default run parameters for each scan:

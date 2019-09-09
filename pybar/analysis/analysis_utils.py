@@ -1488,7 +1488,7 @@ def get_n_cluster_per_event_hist(cluster_table):
 def get_data_statistics(interpreted_files):
     '''Quick and dirty function to give as redmine compatible iverview table
     '''
-    print '| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |'  # Mean ToT | Mean rel. BCID'
+    print('| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |')  # Mean ToT | Mean rel. BCID'
     for interpreted_file in interpreted_files:
         with tb.open_file(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
             n_hits = np.sum(in_file_h5.root.HistOcc[:])
@@ -1502,7 +1502,7 @@ def get_data_statistics(interpreted_files):
             except tb.NoSuchNodeError:
                 n_events = '~' + str(in_file_h5.root.meta_data[-1]['event_number'] + (in_file_h5.root.meta_data[-1]['event_number'] - in_file_h5.root.meta_data[-2]['event_number']))
             else:
-                print '|', os.path.basename(interpreted_file), '|', int(os.path.getsize(interpreted_file) / (1024.0 * 1024.0)), 'Mb |', time.ctime(os.path.getctime(interpreted_file)), '|', n_events, '|', n_bad_events, '|', measurement_time, 's |', n_sr, '|', n_hits, '|'  # , mean_tot, '|', mean_bcid, '|'
+                print('| {} | {}Mb | {} | {} | {} | {}s | {} | {} |'.format(os.path.basename(interpreted_file), int(os.path.getsize(interpreted_file) / (1024.0 * 1024.0)), time.ctime(os.path.getctime(interpreted_file)), n_events, n_bad_events, measurement_time, n_sr, n_hits))  # , mean_tot, mean_bcid, '|'
 
 
 def fix_raw_data(raw_data, lsb_byte=None):
@@ -1627,7 +1627,7 @@ def print_raw_data_file(input_file, start_index=0, limit=200, flavor='fei4b', se
         total_words = 0
         for read_out_index, (index_start, index_stop) in enumerate(np.column_stack((index_start, index_stop))):
             if start_index < index_stop:
-                print "\nchunk %d with length %d (from index %d to %d)\n" % (read_out_index, (index_stop - index_start), index_start, index_stop)
+                print("\nchunk %d with length %d (from index %d to %d)\n" % (read_out_index, (index_stop - index_start), index_start, index_stop))
                 raw_data = file_h5.root.raw_data.read(index_start, index_stop)
                 total_words += print_raw_data(raw_data=raw_data, start_index=max(start_index - index_start, 0), limit=limit - total_words, flavor=flavor, index_offset=index_start, select=select, tdc_trig_dist=tdc_trig_dist, trigger_data_mode=trigger_data_mode)
                 if limit and total_words >= limit:
@@ -1643,7 +1643,7 @@ def print_raw_data(raw_data, start_index=0, limit=200, flavor='fei4b', index_off
     for index in range(start_index, raw_data.shape[0]):
         dw = FEI4Record(raw_data[index], chip_flavor=flavor, tdc_trig_dist=tdc_trig_dist, trigger_data_mode=trigger_data_mode)
         if dw in select:
-            print index + index_offset, '{0:12d} {1:08b} {2:08b} {3:08b} {4:08b}'.format(raw_data[index], (raw_data[index] & 0xFF000000) >> 24, (raw_data[index] & 0x00FF0000) >> 16, (raw_data[index] & 0x0000FF00) >> 8, (raw_data[index] & 0x000000FF) >> 0), dw
+            print('{}: {0:12d} {1:08b} {2:08b} {3:08b} {4:08b}'.format(index + index_offset, raw_data[index], (raw_data[index] & 0xFF000000) >> 24, (raw_data[index] & 0x00FF0000) >> 16, (raw_data[index] & 0x0000FF00) >> 8, (raw_data[index] & 0x000000FF) >> 0), dw)
             total_words += 1
             if limit and total_words >= limit:
                 break
@@ -1651,4 +1651,4 @@ def print_raw_data(raw_data, start_index=0, limit=200, flavor='fei4b', index_off
 
 
 if __name__ == "__main__":
-    print 'Run analysis_utils as main'
+    pass

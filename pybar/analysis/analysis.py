@@ -542,4 +542,4 @@ def analyze_hits_per_scan_parameter(analyze_data, scan_parameters=None, chunk_si
 
 
 if __name__ == "__main__":
-    print 'run analysis as main'
+    pass

@@ -39,6 +39,7 @@ def cmd(data, size):
     while not dut['cmd']['READY']:
         pass
 
+
 cmd([0xB4, 0x10, 0x37, 0x00, 0x00], 39)  # settings PLL
 cmd([0xB4, 0x10, 0x38, 0x04, 0x0C], 39)  # settings PLL
 cmd([0xB4, 0x50, 0x70], 23)  # run mode
@@ -49,6 +50,6 @@ dut['rx_1']['RESET']  # let rx sync
 
 cmd([0xB4, 0x08, 0x00], 23)  # readbck a register
 
-print 'Recived data words:'
+print('Recived data words:')
 for d in dut['sram'].get_data():
-    print hex(d)
+    print(hex(d))

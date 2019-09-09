@@ -18,7 +18,7 @@ try:
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 except Exception:
-    print 'ERROR: Cannot load additional libraries needed for the pyBAR ViTables plugin!'
+    print('ERROR: Cannot load additional libraries needed for the pyBAR ViTables plugin!')
     raise
 import numpy as np
 
@@ -210,9 +210,9 @@ class pyBarPlugin(QtCore.QObject):
         elif 'Table' in str(type(leaf)) and len(leaf[:].dtype.names) <= 3:  # detect tables with less than 4 columns
             plot_table(leaf[:], title=data_name)
         elif data_name == 'HitOrCalibration':
-            print 'Comming soon'
+            print('Comming soon')
         else:
-            print 'Plotting', data_name, '(%s) is not supported!' % type(leaf)
+            print('Plotting %s (%s) is not supported!' % (data_name, type(leaf)))
 
     def helpAbout(self):
         """Brief description of the plugin.
