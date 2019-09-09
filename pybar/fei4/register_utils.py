@@ -485,10 +485,10 @@ def test_pixel_register(self):
                                         set_value = struct.unpack('H', set_value.tobytes())[0]
                                         if read_value == set_value:
                                             pass
-#                                             if do_latch:
-#                                                 print 'Register Test:', 'PxStrobes Bit', pxstrobe+pxstrobe_bit_no, 'DC', dc_no, 'Address', read_address, 'PASSED'
-#                                             else:
-#                                                 print 'Register Test:', 'PxStrobes Bit', 'SR', 'DC', dc_no, 'Address', read_address, 'PASSED'
+                                            # if do_latch:
+                                            #     print('Register Test PASSED: PxStrobes Bit: {}, DC: {}, Address: {}'.format(pxstrobe + pxstrobe_bit_no, dc_no, read_address))
+                                            # else:
+                                            #     print('Register Test PASSED: PxStrobes Bit: SR, DC: {}, Address: {}'.format(dc_no, read_address))
                                         else:
                                             number_of_errors += 1
                                             if do_latch:
@@ -515,9 +515,8 @@ def test_pixel_register(self):
                             logging.warning('Pixel Register Test: Missing data from PxStrobes Bit %d at DC %d at address %d', pxstrobe + pxstrobe_bit_no, dc_no, address)
                         else:
                             logging.warning('Pixel Register Test: Missing data at PxStrobes Bit SR at DC %d at address %d', dc_no, address)
-
-#                        for word in data:
-#                            print FEI4Record(word, self.register.chip_flavor)
+                        # for word in data:
+                        #     print(FEI4Record(word, self.register.chip_flavor))
     commands = []
     self.register.set_global_register_value("Pixel_Strobes", 0)
     self.register.set_global_register_value("Colpr_Addr", 0)

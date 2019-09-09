@@ -1416,7 +1416,7 @@ def timed(f):
         start = time()
         result = f(*args, **kwargs)
         elapsed = time() - start
-        print "%s took %fs to finish" % (f.__name__, elapsed)
+        print("%s took %fs to finish" % (f.__name__, elapsed))
         return result
     return wrapper
 

@@ -20,8 +20,8 @@ class Timer(object):
 
     def __exit__(self, type, value, traceback):
         if self.name:
-            print '[%s]' % self.name,
-        print 'Elapsed: %s' % (time.time() - self.tstart)
+            print('[%s] Elapsed: %s' % (self.name, time.time() - self.tstart))
+        print('Elapsed: %s' % (time.time() - self.tstart,))
 
 
 def get_all_from_queue(Q):
