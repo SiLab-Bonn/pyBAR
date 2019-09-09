@@ -88,7 +88,7 @@ class Fei4RunBase(RunBase):
         self._module_run_conf = {}  # Store module specific run conf
         self._module_cfgs = {}  # Store module specific configurations
         self._modules = {}  # Module IDs of real modules
-        self._tx_module_groups = {}  # Module IDs of TX module groups (virtual modules)
+        self._tx_module_groups = {}  # Module IDs of TX module groups (virtual modules) that share the same command output (TX)
         self._registers = {}  # Store module specific FEI4 registers
         self._register_utils = {}  # Store module specific FEI4 register utils
         self._raw_data_files = {}  # Store module specific raw data files
@@ -312,6 +312,7 @@ class Fei4RunBase(RunBase):
         for module_id in self._module_cfgs:
             sc = namedtuple('run_configuration', field_names=self._default_run_conf.keys())
             run_conf = sc(**self._run_conf)
+            # update run configuration if provided by module configuration
             if module_id in self._modules and self.__class__.__name__ in self._conf["modules"][module_id] and self._conf["modules"][module_id][self.__class__.__name__] is not None:
                 self._module_run_conf[module_id] = run_conf._replace(**self._conf["modules"][module_id][self.__class__.__name__])._asdict()
             else:
