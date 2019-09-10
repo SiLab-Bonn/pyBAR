@@ -7,7 +7,7 @@ import tables as tb
 
 class NameValue(tb.IsDescription):
     name = tb.StringCol(256, pos=0)
-    value = tb.StringCol(4 * 1024, pos=0)
+    value = tb.StringCol(4 * 1024, pos=1)
 
 
 def save_configuration_dict(h5_file, configuation_name, configuration, **kwargs):
