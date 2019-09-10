@@ -692,7 +692,7 @@ class FEI4Register(object):
 
 class NameValue(tb.IsDescription):
     name = tb.StringCol(256, pos=0)
-    value = tb.StringCol(1024, pos=0)
+    value = tb.StringCol(4 * 1024, pos=1)
 
 
 def load_configuration_from_text_file(register, configuration_file):
