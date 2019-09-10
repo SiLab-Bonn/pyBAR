@@ -9,7 +9,6 @@ import sys
 import functools
 import traceback
 import signal
-import abc
 from contextlib import contextmanager
 from importlib import import_module
 from inspect import getmembers, isclass, getargspec
@@ -45,7 +44,6 @@ class RunBase(object):
 
     Base class for run class.
     '''
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, conf):
         '''Initialize object.
@@ -93,11 +91,11 @@ class RunBase(object):
         run_conf = namedtuple('run_conf', field_names=self._run_conf.keys())
         return run_conf(**self._run_conf)  # prevent changing dict
 
-    @abc.abstractproperty
+    @property
     def _default_run_conf(self):
         '''Defining default run configuration (dictionary)
         '''
-        pass
+        raise NotImplementedError("_default_run_conf not set in %s" % self.__class__.__name__)
 
     @property
     def default_run_conf(self):
@@ -207,29 +205,25 @@ class RunBase(object):
         finally:
             self.cleanup_run()
 
-    @abc.abstractmethod
     def pre_run(self):
         '''Before run.
         '''
-        pass
+        raise NotImplementedError("pre_run() not implemented in %s" % self.__class__.__name__)
 
-    @abc.abstractmethod
     def do_run(self):
         '''The run.
         '''
-        pass
+        raise NotImplementedError("do_run() not implemented in %s" % self.__class__.__name__)
 
-    @abc.abstractmethod
     def post_run(self):
         '''After run.
         '''
-        pass
+        raise NotImplementedError("post_run() not implemented in %s" % self.__class__.__name__)
 
-    @abc.abstractmethod
     def cleanup_run(self):
         '''Cleanup after run, will be executed always, even after exception. Avoid throwing exceptions here.
         '''
-        pass
+        raise NotImplementedError("cleanup_run() not implemented in %s" % self.__class__.__name__)
 
     def _cleanup(self):
         '''Cleanup after a new run.

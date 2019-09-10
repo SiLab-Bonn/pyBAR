@@ -14,7 +14,6 @@ from Queue import Queue
 from collections import namedtuple, Mapping
 from contextlib import contextmanager
 from operator import itemgetter
-import abc
 import ast
 import inspect
 import sys
@@ -36,7 +35,6 @@ class Fei4RunBase(RunBase):
 
     Base class for scan- / tune- / analyze-class.
     '''
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, conf):
         # default run conf parameters added for all scans
@@ -515,7 +513,6 @@ class Fei4RunBase(RunBase):
             except Exception:
                 logging.warning("Failed sending pyBAR status report")
 
-    @abc.abstractmethod
     def configure(self):
         '''Implementation of the run configuration.
 
@@ -523,7 +520,6 @@ class Fei4RunBase(RunBase):
         '''
         pass
 
-    @abc.abstractmethod
     def scan(self):
         '''Implementation of the scan routine.
 
@@ -531,7 +527,6 @@ class Fei4RunBase(RunBase):
         '''
         pass
 
-    @abc.abstractmethod
     def analyze(self):
         '''Implementation of run data processing.
 
