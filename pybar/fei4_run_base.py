@@ -12,7 +12,6 @@ from Queue import Queue
 from collections import namedtuple, Mapping, Iterable
 from contextlib import contextmanager
 from operator import itemgetter
-import abc
 import ast
 import inspect
 import sys
@@ -77,7 +76,6 @@ class Fei4RunBase(RunBase):
       - raw_data_file: all output data files with channel data filters
 
     '''
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, conf):
         # Sets self._conf = conf
