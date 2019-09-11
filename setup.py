@@ -39,6 +39,7 @@ setup(
     maintainer=author,
     author_email=author_email,
     maintainer_email=author_email,
+    python_requires='>=2.7',
     install_requires=install_requires,
     packages=find_packages(),
     include_package_data=True,  # accept all data files and directories matched by MANIFEST.in or found in source control

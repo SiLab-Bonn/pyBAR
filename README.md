@@ -35,7 +35,7 @@ The features of the host software in Python:
 
 ## Installation
 
-Python 2.7 must be used. There are many ways to install Python, though we recommend using [Anaconda Python](https://www.anaconda.com/distribution/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
+Python 2.7 or Python 3.7 or higher must be used (other Python versions are not guaranteed to work). There are many ways to install Python, though we recommend using [Anaconda Python](https://www.anaconda.com/distribution/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
 
 ### Prerequisites
 
@@ -56,9 +56,9 @@ Run the **following commands** to install the packages:
   pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0
   ```
 
-[Basil](https://github.com/SiLab-Bonn/basil) (>=2.4.12,<3.0.0) is required:
+[Basil](https://github.com/SiLab-Bonn/basil) (>=2.4.12,<4.0.0) is required:
   ```
-  pip install "basil_daq>=2.4.12,<3.0.0"
+  pip install "basil_daq>=2.4.12,<4.0.0"
   ```
 
 [pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (>=1.3.0) is required:
