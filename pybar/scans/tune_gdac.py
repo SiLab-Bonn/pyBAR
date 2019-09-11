@@ -24,7 +24,7 @@ class GdacTuning(Fei4RunBase):
         "threaded_scan": True,
         "scan_parameters": [('GDAC', None)],
         "target_threshold": 30,  # target threshold in PlsrDAC to tune to
-        "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
+        "gdac_tune_bits": list(range(7, -1, -1)),  # GDAC bits to change during tuning
         "gdac_lower_limit": 30,  # set GDAC lower limit to prevent FEI4 from becoming noisy, set to 0 or None to disable
         "n_injections_gdac": 50,  # number of injections per GDAC bit setting
         "max_delta_threshold": 10,  # minimum difference to the target_threshold to abort the tuning, in percent of n_injections_gdac
@@ -41,14 +41,14 @@ class GdacTuning(Fei4RunBase):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         # C_Low
-        if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+        if "C_Low".lower() in list(map(lambda x: x.lower(), self.enable_shift_masks)):
             self.register.set_pixel_register_value('C_Low', 1)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         else:
             self.register.set_pixel_register_value('C_Low', 0)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # C_High
-        if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+        if "C_High".lower() in list(map(lambda x: x.lower(), self.enable_shift_masks)):
             self.register.set_pixel_register_value('C_High', 1)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         else:
@@ -79,7 +79,7 @@ class GdacTuning(Fei4RunBase):
         # calculate selected pixels from the mask and the disabled columns
         select_mask_array = np.zeros(shape=(80, 336), dtype=np.uint8)
         if not self.enable_mask_steps_gdac:
-            self.enable_mask_steps_gdac = range(self.mask_steps)
+            self.enable_mask_steps_gdac = list(range(self.mask_steps))
         for mask_step in self.enable_mask_steps_gdac:
             select_mask_array += make_pixel_mask(steps=self.mask_steps, shift=mask_step)
         for column in bits_set(self.register.get_global_register_value("DisableColumnCnfg")):
@@ -88,7 +88,6 @@ class GdacTuning(Fei4RunBase):
 
         gdacs_above_threshold = []
         additional_scan_ongoing = False
-        last_good_gdac_bit = self.gdac_tune_bits[0]
         last_good_gdac_scan_step = 0
         gdac_tune_bits_permutation = 0
         gdac_values = []
@@ -101,7 +100,7 @@ class GdacTuning(Fei4RunBase):
             if self.stop_run.is_set():
                 break
             # set all higher GDAC bits
-            gdac_tune_bits_permutation_header = map(int, bin(2**last_good_gdac_scan_step - 1 - gdac_tune_bits_permutation)[2:].zfill(last_good_gdac_scan_step))[-last_good_gdac_scan_step:]
+            gdac_tune_bits_permutation_header = list(map(int, bin(2**last_good_gdac_scan_step - 1 - gdac_tune_bits_permutation)[2:].zfill(last_good_gdac_scan_step)))[-last_good_gdac_scan_step:]
             for gdac_permutation_bit, gdac_permutation_bit_value in enumerate(gdac_tune_bits_permutation_header):
                 self.set_gdac_bit(self.gdac_tune_bits[gdac_permutation_bit], bit_value=gdac_permutation_bit_value, send_command=False)
             # clear all lower GDAC bits
@@ -173,9 +172,10 @@ class GdacTuning(Fei4RunBase):
                             min_gdac_with_occupancy = scanned_gdac
                         else:
                             min_gdac_with_occupancy = max(min_gdac_with_occupancy, scanned_gdac)
-                    for gdac_above_threshold in gdacs_above_threshold:
-                        if gdac_above_threshold <= min_gdac_with_occupancy:  # check for valid values
-                            gdacs_above_threshold.remove(gdac_above_threshold)
+                    if min_gdac_with_occupancy is not None:
+                        for gdac_above_threshold in gdacs_above_threshold:
+                            if gdac_above_threshold <= min_gdac_with_occupancy:  # check for valid values
+                                gdacs_above_threshold.remove(gdac_above_threshold)
 
             if gdac_scan_step + 1 == len(gdac_tune_bits):  # last GDAC scan step
                 if not additional_scan_ongoing and ((occupancy_almost_zero and no_noise) or not gdacs_above_threshold or (self.gdac_lower_limit and self.register_utils.get_gdac() < self.gdac_lower_limit) or (min_gdac_with_occupancy and self.register_utils.get_gdac() <= min_gdac_with_occupancy) or not no_noise) and len(self.gdac_tune_bits) >= last_good_gdac_scan_step + 2:  # min. 2 bits for bin search

@@ -57,7 +57,7 @@ def fit_bcid_jumps(scurve_data, max_chi_2=2.0):  # Data of some pixels to fit, h
 
     if offset_max - offset_min > 2:  # Restrict to detection of two BCID jumps, otherwise most likely corrupt data
         offset_max = offset_min + 2
-    index = range(len(scurve_data))
+    index = list(range(len(scurve_data)))
     result = -np.ones(4)
     for offset_index, offset in enumerate(xrange(offset_min, offset_max)):  # loop over up to two Scurves
         actual_index = [index[i] for i in index if offset <= scurve_data[i] <= offset + 1]
@@ -144,8 +144,8 @@ def analyze_hit_delay(raw_data_file):
             hists_folder_2._v_attrs.plsr_dac_values = plsr_dac
             hists_folder_3._v_attrs.plsr_dac_values = plsr_dac
             hists_folder_4._v_attrs.plsr_dac_values = plsr_dac
-            injection_delay = scan_parameters_dict[scan_parameters_dict.keys()[1]]  # injection delay par name is unknown and should be in the inner loop
-            scan_parameters = scan_parameters_dict.keys()
+            injection_delay = scan_parameters_dict[list(scan_parameters_dict.keys())[1]]  # injection delay par name is unknown and should be in the inner loop
+            scan_parameters = list(scan_parameters_dict.keys())
 
         bcid_array = np.zeros((80, 336, len(injection_delay), 16), dtype=np.uint16)  # bcid array of actual PlsrDAC
         tot_pixel_array = np.zeros((80, 336, len(injection_delay), 16), dtype=np.uint16)  # tot pixel array of actual PlsrDAC
@@ -252,7 +252,7 @@ def analyze_hit_delay(raw_data_file):
             plsr_dac = int(re.search(r'\d+', node.name).group())
             plsr_dac_index = np.where(plsr_dac_values == plsr_dac)[0][0]
             tot_data = node[:]
-            tot[plsr_dac_index] = get_mean_from_histogram(tot_data, range(16))
+            tot[plsr_dac_index] = get_mean_from_histogram(tot_data, list(range(16)))
 
         # Store the data
         out = out_file_h5.create_carray(out_file_h5.root, name='HistPixelTimewalkPerPlsrDac', title='Time walk per pixel and PlsrDAC', atom=tb.Atom.from_dtype(timewalk.dtype), shape=timewalk.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
@@ -345,7 +345,7 @@ class HitDelayScan(Fei4RunBase):
         "broadcast_commands": True,
         "mask_steps": 3,  # mask steps, be carefull PlsrDAC injects different charge for different mask steps
         "n_injections": 20,  # number of injections per PlsrDAC step
-        "scan_parameters": [('PlsrDAC', range(21, 801, 15)), ('PlsrDelay', range(1, 63))],  # make sure to set the lowest PlsrDAC to the threshold position!
+        "scan_parameters": [('PlsrDAC', list(range(21, 801, 15))), ('PlsrDelay', list(range(1, 63)))],  # make sure to set the lowest PlsrDAC to the threshold position!
         "step_size": 1,  # step size of the PlsrDelay during scan
         "use_enable_mask": False,  # if True, use Enable mask during scan, if False, all pixels will be enabled
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan
@@ -357,14 +357,14 @@ class HitDelayScan(Fei4RunBase):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         # C_Low
-        if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+        if "C_Low".lower() in list(map(lambda x: x.lower(), self.enable_shift_masks)):
             self.register.set_pixel_register_value('C_Low', 1)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         else:
             self.register.set_pixel_register_value('C_Low', 0)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # C_High
-        if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+        if "C_High".lower() in list(map(lambda x: x.lower(), self.enable_shift_masks)):
             self.register.set_pixel_register_value('C_High', 1)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         else:

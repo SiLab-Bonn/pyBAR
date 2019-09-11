@@ -53,7 +53,7 @@ class PlsrDacTransientCalibration(AnalogScan):
     _default_run_conf.update({
         "broadcast_commands": False,
         "threaded_scan": False,
-        "scan_parameters": [('PlsrDAC', range(0, 1024, 25))],  # plsr dac settings, be aware: too low plsDAC settings are difficult to trigger
+        "scan_parameters": [('PlsrDAC', list(range(0, 1024, 25)))],  # plsr dac settings, be aware: too low plsDAC settings are difficult to trigger
         "enable_double_columns": [20],  # double columns which will be enabled during scan, default: use column 20
         "enable_mask_steps": [0],  # Scan only one mask step to save time
         "n_injections": 512,  # number of injections, has to be > 260 to allow for averaging 256 injection signals

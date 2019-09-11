@@ -145,7 +145,7 @@ fei4a = {
         'C_Low': {'value': 1, 'bitlength': 1, 'pxstrobe': 7, 'description': 'Big injection capacitor (nominally 1.9fF/ measured 2fF)'},
         'Imon': {'value': 1, 'bitlength': 1, 'pxstrobe': 8, 'description': 'Disabling Imon enables hit-OR'},
         'FDAC': {'value': 8, 'bitlength': 4, 'pxstrobe': 9, 'description': 'The higher the value, the higher the feedback current. Step size can be adjusted by FdacVbn'},
-        'EnableDigInj': {'value': 0, 'bitlength': 1, 'pxstrobe': 'SR', 'description': 'SR is non-existing pixel register'}
+        'EnableDigInj': {'value': 0, 'bitlength': 1, 'pxstrobe': 13, 'description': 'SR is non-existing pixel register'}
     }
 }
 

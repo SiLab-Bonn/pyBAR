@@ -41,7 +41,7 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "reset_local_dacs": True,  # if True, reset pixels registers to the middle of the DAC range before the global tuning starts
         "fail_on_warning": True,  # do not continue tuning if a global tuning fails
         # GDAC
-        "gdac_tune_bits": range(7, -1, -1),  # GDAC bits to change during tuning
+        "gdac_tune_bits": list(range(7, -1, -1)),  # GDAC bits to change during tuning
         "start_gdac": 150,  # start value of standard GDAC tuning, not used for fast GDAC tuning
         "step_size": -1,  # step size of the GDAC during scan, not used for fast GDAC tuning
         "gdac_lower_limit": 30,  # set GDAC lower limit to prevent FEI4 from becoming noisy, set to 0 or None to disable
@@ -49,15 +49,15 @@ class Fei4Tuning(GdacTuning, TdacTuning, FeedbackTuning, FdacTuning):
         "max_delta_threshold": 20,  # minimum difference to the target_threshold to abort the tuning, in percent of n_injections_gdac
         "enable_mask_steps_gdac": [0],  # mask steps to do per GDAC setting, 1 step is sufficient and saves time
         # Feedback
-        "feedback_tune_bits": range(7, -1, -1),
+        "feedback_tune_bits": list(range(7, -1, -1)),
         "n_injections_feedback": 50,
         "max_delta_tot": 0.1,
         "enable_mask_steps_feedback": [0],  # mask steps to do per PrmpVbpf setting, 1 step is sufficient and saves time
         # TDAC
-        "tdac_tune_bits": range(4, -1, -1),
+        "tdac_tune_bits": list(range(4, -1, -1)),
         "n_injections_tdac": 100,
         # FDAC
-        "fdac_tune_bits": range(3, -1, -1),
+        "fdac_tune_bits": list(range(3, -1, -1)),
         "n_injections_fdac": 30,
         # general
         "enable_shift_masks": ["Enable", "C_High", "C_Low"],  # enable masks shifted during scan

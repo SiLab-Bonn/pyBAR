@@ -1,4 +1,8 @@
 import logging
+try:
+    basestring  # noqa
+except NameError:
+    basestring = str  # noqa
 
 import numpy as np
 import tables as tb
@@ -17,7 +21,7 @@ class ExtTriggerGdacScan(ExtTriggerScan):
     _default_run_conf.update({
         "scan_parameters": [('GDAC', None)],  # list of values, string with calibration file name, None: use 50 GDAC values
         "interpolate_calibration": True,  # interpolate GDAC values to have equally spaced thresholds, otherwise take GDACs used during calibration
-        "interpolation_thresholds": range(30, 600, 5)  # threshold values in PlsrDAC
+        "interpolation_thresholds": list(range(30, 600, 5))  # threshold values in PlsrDAC
     })
 
     def configure(self):
@@ -27,7 +31,7 @@ class ExtTriggerGdacScan(ExtTriggerScan):
             altc = self.register.get_global_register_value("Vthin_AltCoarse")
             altf = self.register.get_global_register_value("Vthin_AltFine")
             curr_gdac = self.register_utils.get_gdac(altc=altc, altf=altf)
-            self.gdacs = np.unique(np.logspace(np.log10(curr_gdac), np.log10(6000), 60).astype(np.int)).tolist() + range(6500, 25001, 500)
+            self.gdacs = np.unique(np.logspace(np.log10(curr_gdac), np.log10(6000), 60).astype(np.int)).tolist() + list(range(6500, 25001, 500))
         elif isinstance(self.scan_parameters.GDAC, basestring):  # deduce GDACs from calibration file
             if self.interpolate_calibration:
                 self.gdacs = self.get_gdacs_from_interpolated_calibration(self.scan_parameters.GDAC, self.interpolation_thresholds)

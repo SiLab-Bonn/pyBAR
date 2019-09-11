@@ -6,6 +6,10 @@ import warnings
 import os
 import multiprocessing as mp
 from functools import partial
+try:
+    basestring  # noqa
+except NameError:
+    basestring = str  # noqa
 
 from matplotlib.backends.backend_pdf import PdfPages
 import tables as tb
@@ -768,7 +772,7 @@ class AnalyzeRawData(object):
                     for read_out_index, (index_start, index_stop) in enumerate(readout_slices):
                         try:
                             raw_data = in_file_h5.root.raw_data.read(index_start, index_stop)
-                        except OverflowError, e:
+                        except OverflowError as e:
                             pass
                         except tb.exceptions.HDF5ExtError:
                             break
@@ -821,7 +825,7 @@ class AnalyzeRawData(object):
                                     fixed_raw_data_with_dh = np.r_[previous_raw_data[:-1], dh, fixed_raw_data_chunk]
                                     fixed_raw_data_list = [fixed_raw_data, fixed_raw_data_with_tw, fixed_raw_data_with_dh]
                                 bad_fixed_data, _, _, _ = check_bad_data(fixed_raw_data_with_dh, prepend_data_headers=previous_prepend_data_headers, trig_count=self.trig_count)
-                                bad_fixed_data = map(lambda data: check_bad_data(data, prepend_data_headers=previous_prepend_data_headers, trig_count=self.trig_count)[0], fixed_raw_data_list)
+                                bad_fixed_data = list(map(lambda data: check_bad_data(data, prepend_data_headers=previous_prepend_data_headers, trig_count=self.trig_count)[0], fixed_raw_data_list))
                                 if not all(bad_fixed_data):  # good fixed data
                                     # last word in chunk before currrent chunk is also bad
                                     if index_start != 0:
@@ -859,7 +863,7 @@ class AnalyzeRawData(object):
                 for word_index in range(0, in_file_h5.root.raw_data.shape[0], self._chunk_size):  # loop over all words in the actual raw data file
                     try:
                         raw_data = in_file_h5.root.raw_data.read(word_index, word_index + self._chunk_size)
-                    except OverflowError, e:
+                    except OverflowError as e:
                         logging.error('%s: 2^31 xrange() limitation in 32-bit Python', e)
                     except tb.exceptions.HDF5ExtError:
                         logging.warning('Raw data file %s has missing raw data. Continue raw data analysis.', in_file_h5.filename)
@@ -886,7 +890,7 @@ class AnalyzeRawData(object):
 
                     self.interpreter.interpret_raw_data(raw_data)  # interpret the raw data
                     # store remaining buffered event in the interpreter at the end of the last file
-                    if file_index == len(self.files_dict.keys()) - 1 and word_index == range(0, in_file_h5.root.raw_data.shape[0], self._chunk_size)[-1]:  # store hits of the latest event of the last file
+                    if file_index == len(self.files_dict.keys()) - 1 and word_index == list(range(0, in_file_h5.root.raw_data.shape[0], self._chunk_size))[-1]:  # store hits of the latest event of the last file
                         self.interpreter.store_event()
                     hits = self.interpreter.get_hits()
                     if self.scan_parameters is not None:

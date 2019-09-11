@@ -3,7 +3,7 @@ It is necessary to add a measurement device ("Multimeter") to the Basil configur
 A Keithley SourceMeter is preferred to a Keithley Multimeter since they turn out to be more reliable.
 Note:
  * Use the same enable_shift_masks and mask_steps value for all other scans (e.g. tuning).
- * In case of FE-I4A, deselect outermost double columns (0 and 39): change 'Colpr_Addr' scan parameter to range(1, 39).
+ * In case of FE-I4A, deselect outermost double columns (0 and 39): change 'Colpr_Addr' scan parameter to list(range(1, 39)).
 """
 import logging
 
@@ -29,7 +29,7 @@ class PlsrDacCalibration(Fei4RunBase):
     _default_run_conf = {
         "broadcast_commands": False,
         "threaded_scan": False,
-        "scan_parameters": [('PlsrDAC', range(0, 1024, 25)), ('Colpr_Addr', [20])],  # the PlsrDAC and Colpr_Addr range, default: use column 20, for full scan use range(0, 40)
+        "scan_parameters": [('PlsrDAC', list(range(0, 1024, 25))), ('Colpr_Addr', [20])],  # the PlsrDAC and Colpr_Addr range, default: use column 20, for full scan use list(range(0, 40))
         "mask_steps": 3,
         "repeat_measurements": 10,
         "enable_shift_masks": ["Enable", "C_High", "C_Low"]
@@ -39,7 +39,7 @@ class PlsrDacCalibration(Fei4RunBase):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         enable_mask = make_pixel_mask(steps=self.mask_steps, shift=0, default=0, value=1)  # Activate pixels for injection, although they are not read out
-        map(lambda mask_name: self.register.set_pixel_register_value(mask_name, enable_mask), self.enable_shift_masks)
+        list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, enable_mask), self.enable_shift_masks))
         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=self.enable_shift_masks, joint_write=True))
         self.register.set_global_register_value('Colpr_Mode', 0)  # one DC only
         self.register.set_global_register_value('ExtDigCalSW', 0)

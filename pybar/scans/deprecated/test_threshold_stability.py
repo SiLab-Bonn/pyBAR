@@ -21,7 +21,7 @@ from analysis.analyze_raw_data import AnalyzeRawData
 
 
 local_configuration = {
-    "delays": [1, 10, 50] + (range(100, 3001, 300)),#range(0, 2000, 100),  # the delay between the arbitrary command and the CAL command
+    "delays": [1, 10, 50] + list(range(100, 3000, 100)),  # the delay between the arbitrary command and the CAL command
     "n_injections": 100,  # how often one injects per PlsrDAC setting and pixel
     "output_data_filename": 'threshold_stability',  # the file name to store the result data / plots to, no file suffix required
     "analysis_two_trigger": True,  # set to true if the analysis should be done per trigger

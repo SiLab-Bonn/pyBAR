@@ -229,7 +229,7 @@ def analyze_injected_charge(data_analyzed_file):
                         out_1 = out_file_h5.create_table(out_file_h5.root, name='ProfileHistogram', description=result_1.dtype, title='Single pixel count rate combined with a profile histogram', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                         out_2 = out_file_h5.create_table(out_file_h5.root, name='ProfileHistogramSpline', description=result_2.dtype, title='Single pixel count rate combined with a profile histogram and spline smoothed', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                         out_3 = out_file_h5.create_table(out_file_h5.root, name='ChargeHistogram', description=result_3.dtype, title='Charge histogram with threshold method and per pixel calibration', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                        for key, value in analysis_configuration.iteritems():
+                        for key, value in analysis_configuration.items():
                             out_1.attrs[key] = value
                             out_2.attrs[key] = value
                             out_3.attrs[key] = value
@@ -262,7 +262,7 @@ if __name__ == "__main__":
     cluster_sizes_file = analysis_configuration['scan_name'][0] + '_ALL_cluster_sizes.h5'
 
     if 1 in analysis_configuration['analysis_steps']:
-        analyze_raw_data(input_files=files_dict.keys(), output_file_hits=hit_file, scan_parameter='GDAC')
+        analyze_raw_data(input_files=list(files_dict.keys()), output_file_hits=hit_file, scan_parameter='GDAC')
     if 2 in analysis_configuration['analysis_steps']:
         analyse_selected_hits(input_file_hits=hit_file, output_file_hits=hit_cut_file, output_file_hits_analyzed=hit_cut_analyzed_file, scan_data_filenames=analysis_configuration['scan_name'][0])
     if 2.5 in analysis_configuration['analysis_steps']:

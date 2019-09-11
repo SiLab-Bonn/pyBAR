@@ -9,6 +9,10 @@ import datetime
 from contextlib import contextmanager
 from importlib import import_module
 from operator import itemgetter
+try:
+    long  # noqa
+except NameError:
+    long = int  # noqa
 
 import numpy as np
 import tables as tb
@@ -77,11 +81,11 @@ class FEI4Register(object):
         else:
             self.flavor = fe_type['flavor']
             logging.info('Initializing FEI4 registers (flavor: %s)', self.flavor)
-        for name, reg in fe_type['global_registers'].iteritems():
+        for name, reg in fe_type['global_registers'].items():
             address = reg.get('address')
             offset = reg.get('offset', 0)
             bitlength = reg.get('bitlength')
-            addresses = range(address, address + (offset + bitlength + 16 - 1) / 16)
+            addresses = list(range(address, address + int((offset + bitlength + 16 - 1) / 16)))
             littleendian = reg.get('littleendian', False)
             register_littleendian = reg.get('register_littleendian', False)
             value = reg.get('value', 0)
@@ -90,7 +94,7 @@ class FEI4Register(object):
             readonly = reg.get('readonly', False)
             description = reg.get('description', '')
             self.global_registers[name] = dict(name=name, address=address, offset=offset, bitlength=bitlength, addresses=addresses, littleendian=littleendian, register_littleendian=register_littleendian, value=value, readonly=readonly, description=description)
-        for name, reg in fe_type['pixel_registers'].iteritems():
+        for name, reg in fe_type['pixel_registers'].items():
             pxstrobe = reg.get('pxstrobe')
             bitlength = reg.get('bitlength')
             if bitlength > 8:
@@ -101,7 +105,7 @@ class FEI4Register(object):
             value = np.full((80, 336), reg.get('value', 0), dtype=np.uint8)
             description = reg.get('description', '')
             self.pixel_registers[name] = dict(name=name, pxstrobe=pxstrobe, bitlength=bitlength, littleendian=littleendian, value=value, description=description)
-        for name, command in fe_type['commands'].iteritems():
+        for name, command in fe_type['commands'].items():
             bitlength = command.get('bitlength')
             description = command.get('description', '')
             if 'bitstream' in command:
@@ -174,7 +178,7 @@ class FEI4Register(object):
     def set_global_register_value(self, name, value):
         if self.global_registers[name]['readonly']:
             raise ValueError('Global register %s: register is read-only' % name)
-        value = long(str(value), 0)  # value is decimal string or number or BitVector
+        value = int(str(value), 0)  # value is decimal string or number or BitVector
         if not 0 <= value < 2 ** self.global_registers[name]['bitlength']:
             raise ValueError('Global register %s: value exceeds limits' % name)
         self.global_registers[name]['value'] = value
@@ -216,7 +220,7 @@ class FEI4Register(object):
             if "length" in kwargs:
                 bv += bitarray(kwargs["length"], endian='little')  # initialized from int, bits may be random
             elif kwargs:
-                raise ValueError("Unknown parameter(s): %s" % ", ".join(kwargs.iterkeys()))
+                raise ValueError("Unknown parameter(s): %s" % ", ".join(kwargs.keys()))
             bv.setall(0)  # all bits to zero
             commands.append(bv)
         elif command_name == "ones":
@@ -224,7 +228,7 @@ class FEI4Register(object):
             if "length" in kwargs:
                 bv += bitarray(kwargs["length"], endian='little')  # initialized from int, bits may be random
             elif kwargs:
-                raise ValueError("Unknown parameter(s): %s" % ", ".join(kwargs.iterkeys()))
+                raise ValueError("Unknown parameter(s): %s" % ", ".join(kwargs.keys()))
             bv.setall(1)  # all bits to one
             commands.append(bv)
         elif command_name == "WrRegister":
@@ -241,10 +245,10 @@ class FEI4Register(object):
             elif self.fei4b:
                 registers.append("SR_Read")
             self.create_restore_point()
-            dcs = kwargs.pop("dcs", range(40))  # set the double columns to latch
+            dcs = kwargs.pop("dcs", list(range(40)))  # set the double columns to latch
             # in case of empty list
             if not dcs:
-                dcs = range(40)
+                dcs = list(range(40))
             joint_write = kwargs.pop("joint_write", False)
             same_mask_for_all_dc = kwargs.pop("same_mask_for_all_dc", False)
             register_objects = self.get_pixel_register_objects(do_sort=['pxstrobe'], **kwargs)
@@ -283,7 +287,7 @@ class FEI4Register(object):
                     if register_object['bitlength'] != 1:
                         raise ValueError('Pixel register %s: joint write not supported for pixel DACs' % register_object['name'])
                     pxstrobe = register_object['pxstrobe']
-                    if not isinstance(pxstrobe, basestring):
+                    if not (pxstrobe < 0 or pxstrobe >= self.global_registers["Pixel_Strobes"]['bitlength']):
                         do_latch = True
                         pxstrobes += 2 ** register_object['pxstrobe']
                     if first_read:
@@ -310,7 +314,7 @@ class FEI4Register(object):
             else:
                 for register_object in register_objects:
                     pxstrobe = register_object['pxstrobe']
-                    if isinstance(pxstrobe, basestring):
+                    if pxstrobe < 0 or pxstrobe >= self.global_registers["Pixel_Strobes"]['bitlength']:
                         do_latch = False
                         self.set_global_register_value("Pixel_Strobes", 0)  # no latch
                         self.set_global_register_value("Latch_En", 0)
@@ -340,10 +344,10 @@ class FEI4Register(object):
             elif self.fei4b:
                 registers.append("SR_Read")
             self.create_restore_point()
-            dcs = kwargs.pop("dcs", range(40))  # set the double columns to latch
+            dcs = kwargs.pop("dcs", list(range(40)))  # set the double columns to latch
             # in case of empty list
             if not dcs:
-                dcs = range(40)
+                dcs = list(range(40))
             register_objects = self.get_pixel_register_objects(**kwargs)
             self.set_global_register_value('Conf_AddrEnable', 1)
             self.set_global_register_value("S0", 0)
@@ -482,10 +486,10 @@ class FEI4Register(object):
         for keyword in kwargs.keys():
             allowed_values = iterable(kwargs[keyword])
             try:
-                register_attribute_list.extend(map(itemgetter(register_attribute), filter(lambda global_register: set(iterable(global_register[keyword])).intersection(allowed_values), self.global_registers.itervalues())))
+                register_attribute_list.extend(map(itemgetter(register_attribute), filter(lambda global_register: set(iterable(global_register[keyword])).intersection(allowed_values), self.global_registers.values())))
             except AttributeError:
                 pass
-        if not register_attribute_list and filter(None, kwargs.itervalues()):
+        if not register_attribute_list and list(filter(None, kwargs.values())):
             raise ValueError('Global register attribute %s empty' % register_attribute)
         if do_sort:
             return sorted(set(flatten_iterable(register_attribute_list)))
@@ -507,10 +511,10 @@ class FEI4Register(object):
             register_objects = []
         else:
             register_objects = [self.global_registers[reg] for reg in names]
-        for keyword in kwargs.iterkeys():
+        for keyword in kwargs.keys():
             allowed_values = iterable(kwargs[keyword])
-            register_objects.extend(filter(lambda global_register: set(iterable(global_register[keyword])).intersection(allowed_values), self.global_registers.itervalues()))
-        if not register_objects and filter(None, kwargs.itervalues()):
+            register_objects.extend(filter(lambda global_register: set(iterable(global_register[keyword])).intersection(allowed_values), self.global_registers.values()))
+        if not register_objects and list(filter(None, kwargs.values())):
             raise ValueError('Global register objects empty')
         if do_sort:
             return sorted(register_objects, key=itemgetter(*do_sort), reverse=reverse)
@@ -538,7 +542,7 @@ class FEI4Register(object):
                     reg = bitarray_from_value(value=register_object['value'], size=register_object['bitlength'])
                     if register_object['littleendian']:
                         reg.reverse()
-# register_bitset[max(0, 16 * (register_object['address'] - register_address) + register_object['offset']):min(16, 16 * (register_object['address'] - register_address) + register_object['offset'] + register_object['bitlength'])] |= reg[max(0, 16 * (register_address - register_object['address']) - register_object['offset']):min(register_object['bitlength'], 16 * (register_address - register_object['address'] + 1) - register_object['offset'])]  # [ bit(n) bit(n-1)... bit(0) ]
+                    # register_bitset[max(0, 16 * (register_object['address'] - register_address) + register_object['offset']):min(16, 16 * (register_object['address'] - register_address) + register_object['offset'] + register_object['bitlength'])] |= reg[max(0, 16 * (register_address - register_object['address']) - register_object['offset']):min(register_object['bitlength'], 16 * (register_address - register_object['address'] + 1) - register_object['offset'])]  # [ bit(n) bit(n-1)... bit(0) ]
                     register_bitset[max(0, 16 - 16 * (register_object['address'] - register_address) - register_object['offset'] - register_object['bitlength']):min(16, 16 - 16 * (register_object['address'] - register_address) - register_object['offset'])] |= reg[max(0, register_object['bitlength'] - 16 - 16 * (register_address - register_object['address']) + register_object['offset']):min(register_object['bitlength'], register_object['bitlength'] + 16 - 16 * (register_address - register_object['address'] + 1) + register_object['offset'])]  # [ bit(0)... bit(n-1) bit(n) ]
                 else:
                     raise Exception("wrong register object")
@@ -562,10 +566,10 @@ class FEI4Register(object):
             register_objects = []
         else:
             register_objects = [self.pixel_registers[reg] for reg in names]
-        for keyword in kwargs.iterkeys():
+        for keyword in kwargs.keys():
             allowed_values = iterable(kwargs[keyword])
-            register_objects.extend(filter(lambda pixel_register: pixel_register[keyword] in allowed_values, self.pixel_registers.itervalues()))
-        if not register_objects and filter(None, kwargs.itervalues()):
+            register_objects.extend(filter(lambda pixel_register: pixel_register[keyword] in allowed_values, self.pixel_registers.values()))
+        if not register_objects and list(filter(None, kwargs.values())):
             raise ValueError('Pixel register objects empty')
         if do_sort:
             return sorted(register_objects, key=itemgetter(*do_sort), reverse=reverse)
@@ -739,7 +743,7 @@ def load_configuration_from_text_file(register, configuration_file):
             raise ValueError('Chip address not specified')
     global_registers_configured = []
     pixel_registers_configured = []
-    for key in config_dict.keys():
+    for key in list(config_dict.keys()):
         value = config_dict.pop(key)
         if key in register.global_registers:
             register.set_global_register_value(key, value)
@@ -761,7 +765,7 @@ def load_configuration_from_text_file(register, configuration_file):
     if pixel_registers_not_configured:
         logging.warning("Following pixel register(s) not configured: {}".format(', '.join('\'' + reg + '\'' for reg in pixel_registers_not_configured)))
     if register.miscellaneous:
-        logging.warning("Found following unknown parameter(s): {}".format(', '.join('\'' + parameter + '\'' for parameter in register.miscellaneous.iterkeys())))
+        logging.warning("Found following unknown parameter(s): {}".format(', '.join('\'' + parameter + '\'' for parameter in register.miscellaneous.keys())))
 
 
 def load_configuration_from_hdf5(register, configuration_file, node=''):
@@ -908,7 +912,7 @@ def save_configuration_to_text_file(register, configuration_file):
                         raise ValueError('type %s not supported' % type(register.calibration_parameters[key]))
                 if register.miscellaneous:
                     lines.append("\n# Miscellaneous\n")
-                    for key, value in register.miscellaneous.iteritems():
+                    for key, value in register.miscellaneous.items():
                         lines.append('%s %s\n' % (key, value))
                 f.writelines(lines)
 
@@ -944,7 +948,7 @@ def save_configuration_to_hdf5(register, configuration_file, name=''):
             pass
         calibration_data_table = h5_file.create_table(configuration_group, name='calibration_parameters', description=NameValue, title='calibration_parameters')
         calibration_data_row = calibration_data_table.row
-        for key, value in register.calibration_parameters.iteritems():
+        for key, value in register.calibration_parameters.items():
             calibration_data_row['name'] = key
             calibration_data_row['value'] = str(value)
             calibration_data_row.append()
@@ -963,7 +967,7 @@ def save_configuration_to_hdf5(register, configuration_file, name=''):
         miscellaneous_data_row['name'] = 'Chip_ID'
         miscellaneous_data_row['value'] = register.chip_id
         miscellaneous_data_row.append()
-        for key, value in register.miscellaneous.iteritems():
+        for key, value in register.miscellaneous.items():
             miscellaneous_data_row['name'] = key
             miscellaneous_data_row['value'] = value
             miscellaneous_data_row.append()
@@ -984,7 +988,7 @@ def save_configuration_to_hdf5(register, configuration_file, name=''):
         global_data_table.flush()
 
         # pixel
-        for pixel_reg in register.pixel_registers.itervalues():
+        for pixel_reg in register.pixel_registers.values():
             try:
                 h5_file.remove_node(configuration_group, name=pixel_reg['name'])
             except tb.NodeError:
@@ -1038,9 +1042,15 @@ def parse_pixel_mask_config(filename):
             try:
                 int(line[0])
             except ValueError:
-                line = ''.join(line).translate(None, '_-')
+                try:
+                    line = ''.join(line).translate(None, '_-')
+                except TypeError:
+                    line = ''.join(line).translate(str.maketrans("", "", "_-"))
             else:
-                line = ''.join(line[1:]).translate(None, '_-')
+                try:
+                    line = ''.join(line[1:]).translate(None, '_-')
+                except TypeError:
+                    line = ''.join(line[1:]).translate(str.maketrans("", "", "_-"))
             if len(line) != 80:
                 raise ValueError('Dimension of column')
             # for col, value in enumerate(line):

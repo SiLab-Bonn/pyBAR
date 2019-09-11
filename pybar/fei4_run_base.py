@@ -8,13 +8,28 @@ import smtplib
 from socket import gethostname
 from functools import wraps
 from threading import Event, Thread, current_thread, Lock, RLock, _MainThread
-from Queue import Queue
-from collections import namedtuple, Mapping, Iterable
+try:
+    import Queue as queue
+except ImportError:
+    import queue
+from collections import namedtuple
+try:
+    from collections.abc import Mapping, Iterable  # noqa
+except ImportError:
+    from collections import Mapping, Iterable  # noqa
 from contextlib import contextmanager
 from operator import itemgetter
 import ast
 import inspect
 import sys
+try:
+    basestring  # noqa
+except NameError:
+    basestring = str  # noqa
+try:
+    reduce  # noqa
+except NameError:
+    from functools import reduce
 
 from contextlib2 import ExitStack
 import numpy as np
@@ -22,7 +37,7 @@ import numpy as np
 import basil
 from basil.dut import Dut
 
-from pybar.utils.utils import groupby_dict, dict_compare, zip_nofill, find_file_dir_up
+from pybar.utils.utils import groupby_dict, dict_compare, zip_nofill, find_file_dir_up, reraise
 from pybar.run_manager import RunManager, RunBase, RunAborted
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register import flavors as fe_flavors
@@ -80,7 +95,7 @@ class Fei4RunBase(RunBase):
     def __init__(self, conf):
         # Sets self._conf = conf
         super(Fei4RunBase, self).__init__(conf=conf)
-        self.err_queue = Queue()
+        self.err_queue = queue.Queue()
         self.global_lock = RLock()
 
         self._module_run_conf = {}  # Store module specific run conf
@@ -238,7 +253,7 @@ class Fei4RunBase(RunBase):
         attribute_names = [key for key in self._default_run_conf.keys() if (key != "scan_parameters" and (key in self.__dict__ or (hasattr(self.__class__, key) and isinstance(getattr(self.__class__, key), property))))]
         if attribute_names:
             raise RuntimeError('Attribute names already in use. Rename the following parameters in run conf: %s' % ', '.join(attribute_names))
-        sc = namedtuple('run_configuration', field_names=self._default_run_conf.keys())
+        sc = namedtuple('run_configuration', field_names=list(self._default_run_conf.keys()))
         default_run_conf = sc(**self._default_run_conf)
         if run_conf:
             self._run_conf = default_run_conf._replace(**run_conf)._asdict()
@@ -478,8 +493,8 @@ class Fei4RunBase(RunBase):
                     # evaluating string for support of nested lists and other complex data structures
                     if isinstance(self._module_run_conf[module_id]['scan_parameters'], basestring):
                         self._module_run_conf[module_id]['scan_parameters'] = ast.literal_eval(self._module_run_conf[module_id]['scan_parameters'])
-                    sp = namedtuple('scan_parameters', field_names=zip(*self._module_run_conf[module_id]['scan_parameters'])[0])
-                    self._scan_parameters[module_id] = sp(*zip(*self._module_run_conf[module_id]['scan_parameters'])[1])
+                    sp = namedtuple('scan_parameters', field_names=list(zip(*self._module_run_conf[module_id]['scan_parameters']))[0])
+                    self._scan_parameters[module_id] = sp(*list(zip(*self._module_run_conf[module_id]['scan_parameters']))[1])
                 else:
                     sp = namedtuple_with_defaults('scan_parameters', field_names=[])
                     self._scan_parameters[module_id] = sp()
@@ -489,7 +504,7 @@ class Fei4RunBase(RunBase):
                     last_configuration = self.get_configuration(module_id=module_id)
                 else:
                     last_configuration = None
-                if (('configuration' not in module_cfg or module_cfg['configuration'] is None) and last_configuration is None) or (isinstance(module_cfg['configuration'], (int, long)) and module_cfg['configuration'] <= 0):
+                if (('configuration' not in module_cfg or module_cfg['configuration'] is None) and last_configuration is None) or (isinstance(module_cfg['configuration'], (int,)) and module_cfg['configuration'] <= 0):
                     if 'chip_address' in module_cfg:
                         if module_cfg['chip_address'] is None:
                             chip_address = 0
@@ -513,7 +528,7 @@ class Fei4RunBase(RunBase):
                     else:  # relative path
                         module_cfg['configuration'] = FEI4Register(configuration_file=os.path.join(module_cfg['working_dir'], module_cfg['configuration']))
                 # run number
-                elif isinstance(module_cfg['configuration'], (int, long)) and module_cfg['configuration'] > 0:
+                elif isinstance(module_cfg['configuration'], (int,)) and module_cfg['configuration'] > 0:
                     module_cfg['configuration'] = FEI4Register(configuration_file=self.get_configuration(module_id=module_id, run_number=module_cfg['configuration']))
                 # assume configuration already initialized
                 elif not isinstance(module_cfg['configuration'], FEI4Register):
@@ -609,7 +624,7 @@ class Fei4RunBase(RunBase):
                     # convert to dict
                     dut_configuration = RunManager.open_conf(dut_configuration)
                     # change bit file path
-                    for drv in dut_configuration.iterkeys():
+                    for drv in dut_configuration.keys():
                         if 'bit_file' in dut_configuration[drv] and dut_configuration[drv]['bit_file']:
                             dut_configuration[drv]['bit_file'] = os.path.normpath(dut_configuration[drv]['bit_file'].replace('\\', '/'))
                             # abs path
@@ -703,17 +718,17 @@ class Fei4RunBase(RunBase):
                             for t in self._scan_threads:
                                 t.start()
                             while any([t.is_alive() for t in self._scan_threads]):
-#                                 if self.abort_run.is_set():
-#                                     break
+                                # if self.abort_run.is_set():
+                                #     break
                                 for t in self._scan_threads:
                                     try:
                                         t.join(0.01)
                                     except Exception:
                                         self._scan_threads.remove(t)
                                         self.handle_err(sys.exc_info())
-#                             alive_threads = [t.name for t in self._scan_threads if (not t.join(10.0) and t.is_alive())]
-#                             if alive_threads:
-#                                 raise RuntimeError("Scan thread(s) not finished: %s" % ", ".join(alive_threads))
+                            # alive_threads = [t.name for t in self._scan_threads if (not t.join(10.0) and t.is_alive())]
+                            # if alive_threads:
+                            #     raise RuntimeError("Scan thread(s) not finished: %s" % ", ".join(alive_threads))
                             self._scan_threads = []
                 for module_id in self._tx_module_groups:
                     if self.abort_run.is_set():
@@ -754,7 +769,7 @@ class Fei4RunBase(RunBase):
             if self.threaded_scan:
                 self._scan_threads = []
                 # loop over grpups of modules with different TX
-                for tx_module_ids in zip_nofill(*self._tx_module_groups.values()):
+                for tx_module_ids in zip_nofill(*list(self._tx_module_groups.values())):
                     if self.abort_run.is_set():
                         break
                     with ExitStack() as restore_config_stack:
@@ -782,17 +797,17 @@ class Fei4RunBase(RunBase):
                                 for t in self._scan_threads:
                                     t.start()
                                 while any([t.is_alive() for t in self._scan_threads]):
-#                                     if self.abort_run.is_set():
-#                                         break
+                                    # if self.abort_run.is_set():
+                                    #     break
                                     for t in self._scan_threads:
                                         try:
                                             t.join(0.01)
                                         except Exception:
                                             self._scan_threads.remove(t)
                                             self.handle_err(sys.exc_info())
-#                                 alive_threads = [t.name for t in self._scan_threads if (not t.join(10.0) and t.is_alive())]
-#                                 if alive_threads:
-#                                     raise RuntimeError("Scan thread(s) not finished: %s" % ", ".join(alive_threads))
+                                # alive_threads = [t.name for t in self._scan_threads if (not t.join(10.0) and t.is_alive())]
+                                # if alive_threads:
+                                #     raise RuntimeError("Scan thread(s) not finished: %s" % ", ".join(alive_threads))
                                 self._scan_threads = []
 
                     for module_id in tx_module_ids:
@@ -838,7 +853,7 @@ class Fei4RunBase(RunBase):
                     self.analyze()
                 except Exception:  # analysis errors
                     exc = sys.exc_info()
-                    self.err_queue.put(sys.exc_info())
+                    self.err_queue.put(exc)
                     logging.warning(exc[1].__class__.__name__ + ": " + str(exc[1]))
                 else:  # analyzed data, save config
                     self.register.save_configuration(self.output_filename)
@@ -849,7 +864,10 @@ class Fei4RunBase(RunBase):
                 raise RunAborted(exc[1])
             # some other error via handle_err(), print traceback
             else:
-                raise exc[0], exc[1], exc[2]
+                try:  # Python 3
+                    raise exc[1].with_traceback(exc[2])
+                except AttributeError:  # Python 2.7
+                    reraise(type=exc[0], value=exc[1], traceback=exc[2])
 
     def cleanup_run(self):
         pass
@@ -948,7 +966,7 @@ class Fei4RunBase(RunBase):
                     raise TypeError('Got multiple values for keyword argument %s' % field)
                 fields[field] = value
         if self.current_module_handle is None:
-            selected_modules = self._modules.keys()
+            selected_modules = list(self._modules.keys())
         elif self.current_module_handle in self._modules:
             selected_modules = [self.current_module_handle]
         elif self.current_module_handle in self._tx_module_groups:
@@ -1021,7 +1039,7 @@ class Fei4RunBase(RunBase):
             raise RuntimeError('Module handle "%s" cannot be set because another module is active' % module_id)
 
         if module_id is None:
-            self._selected_modules = self._modules.keys()
+            self._selected_modules = list(self._modules.keys())
         elif not isinstance(module_id, basestring) and isinstance(module_id, Iterable):
             self._selected_modules = module_id
         elif module_id in self._modules:
@@ -1319,7 +1337,10 @@ class ExcThread(Thread):
     def join(self, timeout=None):
         super(ExcThread, self).join(timeout=timeout)
         if self.exc:
-            raise self.exc[0], self.exc[1], self.exc[2]
+            try:  # Python 3
+                raise self.exc[1].with_traceback(self.exc[2])
+            except AttributeError:  # Python 2.7
+                reraise(type=self.exc[0], value=self.exc[1], traceback=self.exc[2])
 
 
 class RhlHandle(object):

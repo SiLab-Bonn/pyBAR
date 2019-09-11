@@ -25,7 +25,7 @@ class FeedbackTuning(Fei4RunBase):
         "scan_parameters": [('PrmpVbpf', None)],
         "target_charge": 280,
         "target_tot": 5,
-        "feedback_tune_bits": range(7, -1, -1),
+        "feedback_tune_bits": list(range(7, -1, -1)),
         "n_injections_feedback": 50,
         "max_delta_tot": 0.1,
         "enable_mask_steps_feedback": [0],  # mask steps to do per PrmpVbpf setting
@@ -41,14 +41,14 @@ class FeedbackTuning(Fei4RunBase):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         # C_Low
-        if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+        if "C_Low".lower() in list(map(lambda x: x.lower(), self.enable_shift_masks)):
             self.register.set_pixel_register_value('C_Low', 1)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         else:
             self.register.set_pixel_register_value('C_Low', 0)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # C_High
-        if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+        if "C_High".lower() in list(map(lambda x: x.lower(), self.enable_shift_masks)):
             self.register.set_pixel_register_value('C_High', 1)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         else:
@@ -75,7 +75,7 @@ class FeedbackTuning(Fei4RunBase):
         # calculate selected pixels from the mask and the disabled columns
         select_mask_array = np.zeros(shape=(80, 336), dtype=np.uint8)
         if not self.enable_mask_steps_feedback:
-            self.enable_mask_steps_feedback = range(self.mask_steps)
+            self.enable_mask_steps_feedback = list(range(self.mask_steps))
         for mask_step in self.enable_mask_steps_feedback:
             select_mask_array += make_pixel_mask(steps=self.mask_steps, shift=mask_step)
         for column in bits_set(self.register.get_global_register_value("DisableColumnCnfg")):

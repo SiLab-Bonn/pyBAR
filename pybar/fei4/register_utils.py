@@ -2,10 +2,16 @@ import logging
 import time
 import re
 import struct
-import os
 from ast import literal_eval
-from operator import itemgetter
 import itertools
+try:
+    basestring  # noqa
+except NameError:
+    basestring = str  # noqa
+try:
+    reduce  # noqa
+except NameError:
+    from functools import reduce
 
 from bitarray import bitarray
 import numpy as np
@@ -53,7 +59,7 @@ class FEI4RegisterUtils(object):
         if concatenate:
             commands_iter = iter(commands)
             try:
-                concatenated_cmd = commands_iter.next()
+                concatenated_cmd = next(commands_iter)
             except StopIteration:
                 logging.warning('No commands to be sent')
             else:
@@ -459,7 +465,7 @@ def test_pixel_register(self):
                         logging.error('Pixel Register Test: No data from PxStrobes Bit SR at DC %d', dc_no)
                     number_of_errors += 1
                 else:
-                    expected_addresses = range(15, 672, 16)
+                    expected_addresses = list(range(15, 672, 16))
                     seen_addresses = {}
                     for index, word in enumerate(np.nditer(data)):
                         fei4_data = FEI4Record(word, self.register.chip_flavor)
@@ -506,7 +512,7 @@ def test_pixel_register(self):
                                 # number_of_errors += 1  # will be increased later
                                 logging.warning('Pixel Register Test: Expected Value Record but found %s', fei4_next_data_word)
 
-                    not_read_addresses = set.difference(set(expected_addresses), seen_addresses.iterkeys())
+                    not_read_addresses = set.difference(set(expected_addresses), seen_addresses.keys())
                     not_read_addresses = list(not_read_addresses)
                     not_read_addresses.sort()
                     for address in not_read_addresses:
@@ -718,8 +724,8 @@ def make_pixel_mask(steps, shift, default=0, value=1, enable_columns=None, mask=
         odd_columns = [odd - 1 for odd in enable_columns if odd % 2 != 0]
         even_columns = [even - 1 for even in enable_columns if even % 2 == 0]
     else:
-        odd_columns = range(0, 80, 2)
-        even_columns = range(1, 80, 2)
+        odd_columns = list(range(0, 80, 2))
+        even_columns = list(range(1, 80, 2))
     odd_rows = np.arange(shift % steps, 336, steps)
     even_row_offset = ((steps // 2) + shift) % steps  # // integer devision
     even_rows = np.arange(even_row_offset, 336, steps)
@@ -893,11 +899,19 @@ def parse_key_value(filename, key, deletechars=''):
 def parse_key_value_from_file(f, key, deletechars=''):
     for line in f.readlines():
         key_value = re.split("\s+|[\s]*=[\s]*", line)
-        if (key_value[0].translate(None, deletechars).lower() == key.translate(None, deletechars).lower()):
+        try:
+            found_key = key_value[0].translate(None, deletechars).lower() == key.translate(None, deletechars).lower()
+        except KeyError:
+            found_key = key_value[0].translate(str.maketrans("", "", deletechars)).lower() == key.translate(str.maketrans("", "", deletechars)).lower()
+        if found_key:
             if len(key_value) > 1:
-                return key_value[0].translate(None, deletechars).lower(), key_value[1].translate(None, deletechars).lower()
+                try:
+                    ret = key_value[0].translate(None, deletechars).lower(), key_value[1].translate(None, deletechars).lower()
+                except KeyError:
+                    line = key_value[0].translate(str.maketrans("", "", deletechars)).lower(), key_value[1].translate(str.maketrans("", "", deletechars)).lower()
+                return ret
             else:
-                raise ValueError('Value not found')
+                raise ValueError('Value not found for "%s"' % key_value[0])
         else:
             return None
 
@@ -965,11 +979,11 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
     elif isinstance(double_column_correction, (list, tuple)):  # from list/tuple
         plsr_dac_correction = list(double_column_correction)
     else:  # default
-        if "C_High".lower() in map(lambda x: x.lower(), enable_shift_masks) and "C_Low".lower() in map(lambda x: x.lower(), enable_shift_masks):
+        if "C_High".lower() in list(map(lambda x: x.lower(), enable_shift_masks)) and "C_Low".lower() in list(map(lambda x: x.lower(), enable_shift_masks)):
             plsr_dac_correction = self.register.calibration_parameters['Pulser_Corr_C_Inj_High']
-        elif "C_High".lower() in map(lambda x: x.lower(), enable_shift_masks):
+        elif "C_High".lower() in list(map(lambda x: x.lower(), enable_shift_masks)):
             plsr_dac_correction = self.register.calibration_parameters['Pulser_Corr_C_Inj_Med']
-        elif "C_Low".lower() in map(lambda x: x.lower(), enable_shift_masks):
+        elif "C_Low".lower() in list(map(lambda x: x.lower(), enable_shift_masks)):
             plsr_dac_correction = self.register.calibration_parameters['Pulser_Corr_C_Inj_Low']
     # initial PlsrDAC value for PlsrDAC correction
     initial_plsr_dac = self.register.get_global_register_value("PlsrDAC")
@@ -1019,19 +1033,19 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
             return self.register_utils.concatenate_commands(commands, byte_padding=True)
 
         if not enable_mask_steps:
-            enable_mask_steps = range(mask_steps)
+            enable_mask_steps = list(range(mask_steps))
 
         if not enable_double_columns:
-            enable_double_columns = range(40)
+            enable_double_columns = list(range(40))
 
         # preparing for scan
         commands = []
         commands.append(conf_mode_command)
         if digital_injection is True:
             # check if C_High and/or C_Low is in enable_shift_mask and/or disable_shift_mask
-            if "C_High".lower() in map(lambda x: x.lower(), enable_shift_masks) or "C_High".lower() in map(lambda x: x.lower(), disable_shift_masks):
+            if "C_High".lower() in list(map(lambda x: x.lower(), enable_shift_masks)) or "C_High".lower() in list(map(lambda x: x.lower(), disable_shift_masks)):
                 raise ValueError('C_High must not be shift mask when using digital injection')
-            if "C_Low".lower() in map(lambda x: x.lower(), enable_shift_masks) or "C_Low".lower() in map(lambda x: x.lower(), disable_shift_masks):
+            if "C_Low".lower() in list(map(lambda x: x.lower(), enable_shift_masks)) or "C_Low".lower() in list(map(lambda x: x.lower(), disable_shift_masks)):
                 raise ValueError('C_Low must not be shift mask when using digital injection')
             # turn off all injection capacitors by default
             self.register.set_pixel_register_value("C_High", 0)
@@ -1062,11 +1076,11 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
             if same_mask_for_all_dc:  # generate and write first mask step
                 if disable_shift_masks:
                     curr_dis_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, mask=mask)
-                    map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
+                    list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks))
                     commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False if mask is not None else True, name=disable_shift_masks, joint_write=True))
                 if enable_shift_masks:
                     curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, mask=mask)
-                    map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks)
+                    list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks))
                     commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False if mask is not None else True, name=enable_shift_masks, joint_write=True))
                 if digital_injection is True:  # write EnableDigInj last
                     # write DIGHITIN_SEL since after mask writing it is disabled
@@ -1074,10 +1088,10 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
                     commands.extend(self.register.get_commands("WrRegister", name=["DIGHITIN_SEL"]))
             else:  # set masks to default values
                 if disable_shift_masks:
-                    map(lambda mask_name: self.register.set_pixel_register_value(mask_name, 1), disable_shift_masks)
+                    list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, 1), disable_shift_masks))
                     commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=disable_shift_masks, joint_write=True))
                 if enable_shift_masks:
-                    map(lambda mask_name: self.register.set_pixel_register_value(mask_name, 0), enable_shift_masks)
+                    list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, 0), enable_shift_masks))
                     commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=enable_shift_masks, joint_write=True))
                 if digital_injection is True:  # write EnableDigInj last
                     # write DIGHITIN_SEL since after mask writing it is disabled
@@ -1145,11 +1159,11 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
                     commands.append(conf_mode_command)
                     if disable_shift_masks:
                         curr_dis_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=ec, mask=mask)
-                        map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
+                        list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks))
                         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks, joint_write=True))
                     if enable_shift_masks:
                         curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
-                        map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks)
+                        list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks))
                         commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks, joint_write=True))
                     if digital_injection is True:
                         self.register.set_global_register_value("DIGHITIN_SEL", 1)
@@ -1172,11 +1186,11 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
                             commands.append(conf_mode_command)
                             if disable_shift_masks:
                                 curr_dis_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=ec, mask=mask)
-                                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
+                                list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks))
                                 commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks, joint_write=True))
                             if enable_shift_masks:
                                 curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
-                                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks)
+                                list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks))
                                 commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks, joint_write=True))
                             if digital_injection is True:
                                 self.register.set_global_register_value("DIGHITIN_SEL", 1)
@@ -1214,11 +1228,11 @@ def scan_loop(self, command, repeat_command=100, use_delay=True, additional_dela
                         commands.append(conf_mode_command)
                         if disable_shift_masks:
                             curr_dis_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, default=1, value=0, enable_columns=ec, mask=mask)
-                            map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks)
+                            list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_dis_mask), disable_shift_masks))
                             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=disable_shift_masks, joint_write=True))
                         if enable_shift_masks:
                             curr_en_mask = make_pixel_mask(steps=mask_steps, shift=mask_step, enable_columns=ec, mask=mask)
-                            map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks)
+                            list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, curr_en_mask), enable_shift_masks))
                             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=enable_shift_masks, joint_write=True))
                         if digital_injection is True:
                             self.register.set_global_register_value("DIGHITIN_SEL", 1)

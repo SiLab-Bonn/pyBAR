@@ -6,7 +6,10 @@ import logging
 import unittest
 import shutil
 import mock
-from Queue import Empty
+try:
+    import Queue as queue
+except ImportError:
+    import queue
 import subprocess
 import time
 import os
@@ -27,7 +30,7 @@ def send_commands(self, commands, repeat=1, wait_for_finish=True, concatenate=Tr
     if concatenate:
         commands_iter = iter(commands)
         try:
-            concatenated_cmd = commands_iter.next()
+            concatenated_cmd = next(commands_iter)
         except StopIteration:
             logging.warning('No commands to be sent')
         else:
@@ -78,7 +81,7 @@ class TestInterface(unittest.TestCase):
         error_msg = 'Global register test failed. '
         try:
             error_msg += str(run_manager.current_run.err_queue.get(timeout=1)[1])
-        except Empty:
+        except queue.Empty:
             pass
         ok = (run_manager.current_run._run_status == 'FINISHED')
         self.assertTrue(ok, msg=error_msg)

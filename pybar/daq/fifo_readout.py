@@ -1,9 +1,16 @@
 import logging
 from time import sleep, time
-from itertools import izip
 from threading import Thread, Event, Lock, Condition
-from collections import deque, Iterable
+from collections import deque
+try:
+    from collections.abc import Iterable  # noqa
+except ImportError:
+    from collections import Iterable  # noqa
 import sys
+try:
+    basestring  # noqa
+except NameError:
+    basestring = str  # noqa
 
 import numpy as np
 
@@ -206,7 +213,7 @@ class FifoReadout(object):
                     thread.join(timeout=timeout)
                     if thread.is_alive():
                         raise StopTimeout('Stopping %s readout thread timed out after %0.1fs' % (fifo, timeout))
-                except StopTimeout, e:
+                except StopTimeout as e:
                     self.force_stop[fifo].set()
                     if self.errback:
                         self.errback(sys.exc_info())
@@ -267,6 +274,7 @@ class FifoReadout(object):
             logging.info('FEI4 RX sync:                     %s', " | ".join(["YES".rjust(max(3, len(fei4_rx_names[index]))) if status is True else "NO".rjust(max(3, len(fei4_rx_names[index]))) for index, status in enumerate(sync_status)]))
             logging.info('FEI4 RX FIFO discard counter:     %s', " | ".join([repr(count).rjust(max(3, len(fei4_rx_names[index]))) for index, count in enumerate(discard_count)]))
             logging.info('FEI4 RX FIFO 8b10b error counter: %s', " | ".join([repr(count).rjust(max(3, len(fei4_rx_names[index]))) for index, count in enumerate(error_count)]))
+
         if not any(sync_status) or any(discard_count) or any(error_count):
             logging.warning('FEI4 RX errors detected')
 
@@ -336,7 +344,7 @@ class FifoReadout(object):
                 if data_tuple is None:  # if None then exit
                     break
                 else:
-                    for index, (filter_func, converter_func, fifo_select) in enumerate(izip(self.filter_func, self.converter_func, self.fifo_select)):
+                    for index, (filter_func, converter_func, fifo_select) in enumerate(zip(self.filter_func, self.converter_func, self.fifo_select)):
                         if fifo_select is None or fifo_select == fifo:
                             # filter and do the conversion
                             converted_data_tuple = convert_data_iterable((data_tuple,), filter_func=filter_func, converter_func=converter_func)[0]
@@ -497,24 +505,24 @@ class FifoReadout(object):
 
     def get_rx_enable_status(self, channels=None):
         if channels:
-            return map(lambda channel: True if (self.dut[channel].ENABLE_RX or channel in self.enabled_fe_channels) else False, channels)
+            return list(map(lambda channel: True if (self.dut[channel].ENABLE_RX or channel in self.enabled_fe_channels) else False, channels))
         else:
-            return map(lambda channel: True if (channel.ENABLE_RX or channel.name in self.enabled_fe_channels) else False, self.dut.get_modules('fei4_rx'))
+            return list(map(lambda channel: True if (channel.ENABLE_RX or channel.name in self.enabled_fe_channels) else False, self.dut.get_modules('fei4_rx')))
 
     def get_rx_sync_status(self, channels=None):
         if channels is None:
-            return map(lambda channel: True if channel.READY else False, self.dut.get_modules('fei4_rx'))
+            return list(map(lambda channel: True if channel.READY else False, self.dut.get_modules('fei4_rx')))
         else:
-            return map(lambda channel: True if self.dut[channel].READY else False, channels)
+            return list(map(lambda channel: True if self.dut[channel].READY else False, channels))
 
     def get_rx_8b10b_error_count(self, channels=None):
         if channels is None:
-            return map(lambda channel: channel.DECODER_ERROR_COUNTER, self.dut.get_modules('fei4_rx'))
+            return list(map(lambda channel: channel.DECODER_ERROR_COUNTER, self.dut.get_modules('fei4_rx')))
         else:
-            return map(lambda channel: self.dut[channel].DECODER_ERROR_COUNTER, channels)
+            return list(map(lambda channel: self.dut[channel].DECODER_ERROR_COUNTER, channels))
 
     def get_rx_fifo_discard_count(self, channels=None):
         if channels is None:
-            return map(lambda channel: channel.LOST_DATA_COUNTER, self.dut.get_modules('fei4_rx'))
+            return list(map(lambda channel: channel.LOST_DATA_COUNTER, self.dut.get_modules('fei4_rx')))
         else:
-            return map(lambda channel: self.dut[channel].LOST_DATA_COUNTER, channels)
+            return list(map(lambda channel: self.dut[channel].LOST_DATA_COUNTER, channels))

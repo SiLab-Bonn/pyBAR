@@ -34,7 +34,7 @@ def save_configuration_dict(h5_file, configuation_name, configuration, **kwargs)
 
         scan_param_table = h5_file.create_table(configuration_group, name=configuation_name, description=NameValue, title=configuation_name)
         row_scan_param = scan_param_table.row
-        for key, value in dict.iteritems(configuration):
+        for key, value in configuration.items():
             row_scan_param['name'] = key
             row_scan_param['value'] = str(value)
             row_scan_param.append()

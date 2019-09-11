@@ -77,7 +77,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite
             analyze_raw_data.interpreter.print_summary()  # prints the interpreter summary
 
             # Store the enables pixels for good pixel selection in TDC analysis step
-            with tb.open_file(analyze_raw_data.files_dict.items()[0][0]) as in_file_h5:  # Use first raw data file to extract enable mask
+            with tb.open_file(list(analyze_raw_data.files_dict.items())[0][0]) as in_file_h5:  # Use first raw data file to extract enable mask
                 analyze_raw_data.out_file_h5.root.ClusterHits.attrs.enabled_pixels = in_file_h5.root.configuration.Enable[:]
 
             if interpreter_plots:
@@ -288,8 +288,8 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                 out_5 = out_file_h5.create_carray(out_file_h5.root, name='HistTdcCondition_%d' % index, title='Hist TDC with %s' % condition, atom=tb.Atom.from_dtype(tdc_hists_per_condition_result.dtype), shape=tdc_hists_per_condition_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 out_6 = out_file_h5.create_carray(out_file_h5.root, name='HistTdcCorrCondition_%d' % index, title='Hist Correlation TDC/ToT with %s' % condition, atom=tb.Atom.from_dtype(tdc_corr_hist_result.dtype), shape=tdc_corr_hist_result.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 # Add result hists information
-                out_1.attrs.dimensions, out_1.attrs.condition, out_1.attrs.tdc_values = 'column, row, TDC value', condition, range(max_tdc)
-                out_2.attrs.dimensions, out_2.attrs.condition, out_2.attrs.tdc_values = 'column, row, TDC time stamp value', condition, range(256)
+                out_1.attrs.dimensions, out_1.attrs.condition, out_1.attrs.tdc_values = 'column, row, TDC value', condition, list(range(max_tdc))
+                out_2.attrs.dimensions, out_2.attrs.condition, out_2.attrs.tdc_values = 'column, row, TDC time stamp value', condition, list(range(256))
                 out_3.attrs.dimensions, out_3.attrs.condition = 'column, row, mean TDC value', condition
                 out_4.attrs.dimensions, out_4.attrs.condition = 'column, row, mean TDC time stamp value', condition
                 out_5.attrs.dimensions, out_5.attrs.condition = 'PlsrDAC', condition
