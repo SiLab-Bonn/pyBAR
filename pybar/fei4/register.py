@@ -237,7 +237,7 @@ class FEI4Register(object):
             register_addresses = self.get_global_register_attributes('addresses', **kwargs)
             commands.extend([self.build_command(command_name, Address=register_address, ChipID=chip_id) for register_address in register_addresses])
         elif command_name == "WrFrontEnd":
-            registers = ["S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr"]
+            registers = ["S0", "S1", "SR_Clr", "CalEn", "DIGHITIN_SEL", "GateHitOr", "ReadErrorReq", "StopClkPulse", "SR_Clock", "Efuse_Sense", "HITLD_IN", "Colpr_Mode", "Colpr_Addr", "Pixel_Strobes", "Latch_En"]
             if self.fei4a:
                 registers.append("ReadSkipped")
             elif self.fei4b:
