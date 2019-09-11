@@ -36,14 +36,14 @@ class FastThresholdScan(Fei4RunBase):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         # C_Low
-        if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+        if "C_Low".lower() in list(map(lambda x: x.lower(), self.enable_shift_masks)):
             self.register.set_pixel_register_value('C_Low', 1)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         else:
             self.register.set_pixel_register_value('C_Low', 0)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # C_High
-        if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+        if "C_High".lower() in list(map(lambda x: x.lower(), self.enable_shift_masks)):
             self.register.set_pixel_register_value('C_High', 1)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         else:
@@ -72,7 +72,7 @@ class FastThresholdScan(Fei4RunBase):
         self.data_points = 0  # counter variable to count the data points already recorded, have to be at least minimum_data_ponts
 
         # calculate DCs to scan from the columns to ignore
-        enable_double_columns = range(0, 40)
+        enable_double_columns = list(range(0, 40))
         if 1 in self.ignore_columns:
             enable_double_columns.remove(0)
         if set((78, 79, 80)).issubset(self.ignore_columns):
@@ -82,7 +82,7 @@ class FastThresholdScan(Fei4RunBase):
                 enable_double_columns.remove(double_column)
         logging.info("Use DCs: %s", str(enable_double_columns))
 
-        self.select_arr_columns = range(0, 80)
+        self.select_arr_columns = list(range(0, 80))
         for column in self.ignore_columns:
             self.select_arr_columns.remove(column - 1)
 

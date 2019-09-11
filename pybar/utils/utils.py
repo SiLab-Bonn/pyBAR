@@ -1,14 +1,32 @@
+import sys
 import random
 import time
 import datetime
-import Queue
+try:
+    import Queue as queue
+except ImportError:
+    import queue
 import collections
-import itertools
-import os
+from itertools import islice
 import os.path
-# import array
+try:
+    basestring  # noqa
+except NameError:
+    basestring = str  # noqa
+
 import numpy as np
-# from bitarray import bitarray
+
+
+if sys.version_info[0] == 3:
+    def reraise(type, value, traceback=None):
+        if value is None:
+            value = type()
+        if traceback is None:
+            raise value
+        else:
+            raise value.with_traceback(traceback)
+else:
+    exec("def reraise(type, value, traceback=None):\n    raise type, value, traceback\n")
 
 
 class Timer(object):
@@ -31,7 +49,7 @@ def get_all_from_queue(Q):
     try:
         while True:
             yield Q.get_nowait()
-    except Queue.Empty:
+    except queue.Empty:
         raise StopIteration
 
 
@@ -45,7 +63,7 @@ def get_item_from_queue(Q, timeout=0.01):
     """
     try:
         item = Q.get(True, 0.01)
-    except Queue.Empty:
+    except queue.Empty:
         return None
 
     return item
@@ -131,15 +149,15 @@ def convert_to_float(n):
 
 
 def find_key(dictionary, val):
-    return [k for k, v in dictionary.iteritems() if v == val][0]
+    return [k for k, v in dictionary.items() if v == val][0]
 
 
 def find_keys(dictionary, val):
-    return [k for k, v in dictionary.iteritems() if v == val]
+    return [k for k, v in dictionary.items() if v == val]
 
 
 def find_key_with_match(dictionary, val):
-    return [k for k, v in dictionary.iteritems() if v in val][0]
+    return [k for k, v in dictionary.items() if v in val][0]
 
 
 def int_to_bin(n):
@@ -248,10 +266,10 @@ def get_float_time():
 
 def split_seq(iterable, size):
     it = iter(iterable)
-    item = list(itertools.islice(it, size))
+    item = list(islice(it, size))
     while item:
         yield item
-        item = list(itertools.islice(it, size))
+        item = list(islice(it, size))
 
 
 def str2bool(value):

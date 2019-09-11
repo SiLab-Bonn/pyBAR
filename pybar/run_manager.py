@@ -16,10 +16,14 @@ from functools import partial
 from ast import literal_eval
 from time import time
 from functools import wraps
+try:
+    basestring  # noqa
+except NameError:
+    basestring = str  # noqa
 
 from yaml import safe_load
 
-from pybar.utils.utils import find_file_dir_up
+from pybar.utils.utils import find_file_dir_up, reraise
 
 
 punctuation = '!,.:;?'
@@ -81,14 +85,14 @@ class RunBase(object):
     def conf(self):
         '''Configuration (namedtuple)
         '''
-        conf = namedtuple('conf', field_names=self._conf.keys())
+        conf = namedtuple('conf', field_names=list(self._conf.keys()))
         return conf(**self._conf)  # prevent changing dict
 
     @property
     def run_conf(self):
         '''Run configuration (namedtuple)
         '''
-        run_conf = namedtuple('run_conf', field_names=self._run_conf.keys())
+        run_conf = namedtuple('run_conf', field_names=list(self._run_conf.keys()))
         return run_conf(**self._run_conf)  # prevent changing dict
 
     @property
@@ -101,7 +105,7 @@ class RunBase(object):
     def default_run_conf(self):
         '''Default run configuration (namedtuple)
         '''
-        default_run_conf = namedtuple('default_run_conf', field_names=self._default_run_conf.keys())
+        default_run_conf = namedtuple('default_run_conf', field_names=list(self._default_run_conf.keys()))
         return default_run_conf(**self._default_run_conf)  # prevent changing dict
 
     @property
@@ -186,7 +190,7 @@ class RunBase(object):
         self._init_run_conf(run_conf)
 
     def _init_run_conf(self, run_conf):
-        sc = namedtuple('run_configuration', field_names=self._default_run_conf.keys())
+        sc = namedtuple('run_configuration', field_names=list(self._default_run_conf.keys()))
         default_run_conf = sc(**self._default_run_conf)
         if run_conf:
             self._run_conf = default_run_conf._replace(**run_conf)._asdict()
@@ -317,11 +321,11 @@ class RunBase(object):
             if not run_numbers:
                 self._run_number = 1
             else:
-                self._run_number = max(dict.iterkeys(run_numbers)) + 1
+                self._run_number = max(run_numbers.keys()) + 1
         run_numbers[self.run_number] = str(self.run_number) + ' ' + self.__class__.__name__ + ' ' + 'RUNNING' + ' ' + str(self._run_start_time) + '\n'
         with self.file_lock:
             with open(os.path.join(self.working_dir, "run" + ".cfg"), "w") as f:
-                for value in dict.itervalues(run_numbers):
+                for value in run_numbers.values():
                     f.write(value)
 
     def _write_run_status(self, status_msg):
@@ -336,7 +340,7 @@ class RunBase(object):
             run_numbers[self.run_number] = ' '.join(parts[:-1]) + ' ' + str(self._run_stop_time) + ' ' + str(self._total_run_time) + '\n'
         with self.file_lock:
             with open(os.path.join(self.working_dir, "run" + ".cfg"), "w") as f:
-                for value in dict.itervalues(run_numbers):
+                for value in run_numbers.values():
                     f.write(value)
 
     def _signal_handler(self, signum, frame):
@@ -385,7 +389,10 @@ def thunkify(thread_name=None, daemon=True, default_func=None):
                     else:
                         return default_func()
                 if exc[0]:
-                    raise exc[1][0], exc[1][1], exc[1][2]
+                    try:  # Python 3
+                        raise exc[1][1].with_traceback(exc[1][2])
+                    except AttributeError:  # Python 2.7
+                        reraise(type=exc[1][0], value=exc[1][1], traceback=exc[1][2])
                 return result[0]
 
             worker_thread.start()
@@ -424,7 +431,7 @@ class RunManager(object):
     def conf(self):
         '''Configuration (namedtuple)
         '''
-        conf = namedtuple('conf', field_names=self._conf.keys())
+        conf = namedtuple('conf', field_names=list(self._conf.keys()))
         return conf(**self._conf)  # prevent changing dict
 
     def init(self, conf):

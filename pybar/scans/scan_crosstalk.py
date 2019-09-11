@@ -33,14 +33,14 @@ class CrosstalkScan(Fei4RunBase):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         # C_Low
-        if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+        if "C_Low".lower() in list(map(lambda x: x.lower(), self.enable_shift_masks)):
             self.register.set_pixel_register_value('C_Low', 1)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         else:
             self.register.set_pixel_register_value('C_Low', 0)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # C_High
-        if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+        if "C_High".lower() in list(map(lambda x: x.lower(), self.enable_shift_masks)):
             self.register.set_pixel_register_value('C_High', 1)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         else:
@@ -55,7 +55,7 @@ class CrosstalkScan(Fei4RunBase):
             scan_parameter_range[0] = self.scan_parameters.PlsrDAC[0]
         if self.scan_parameters.PlsrDAC[1]:
             scan_parameter_range[1] = self.scan_parameters.PlsrDAC[1]
-        scan_parameter_range = range(scan_parameter_range[0], scan_parameter_range[1] + 1, self.step_size)
+        scan_parameter_range = list(range(scan_parameter_range[0], scan_parameter_range[1] + 1, self.step_size))
         logging.info("Scanning %s from %d to %d", 'PlsrDAC', scan_parameter_range[0], scan_parameter_range[-1])
 
         def set_xtalk_mask():
@@ -63,7 +63,7 @@ class CrosstalkScan(Fei4RunBase):
             if frame.f_back.f_locals['index'] == 0:
                 mask = make_pixel_mask(steps=self.mask_steps, shift=frame.f_back.f_locals['mask_step'])
                 mask = make_xtalk_mask(mask)
-                map(lambda mask_name: self.register.set_pixel_register_value(mask_name, mask), self.disable_shift_masks)
+                list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, mask), self.disable_shift_masks))
                 commands = []
                 commands.append(self.register.get_commands("ConfMode")[0])
                 commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name=self.xtalk_shift_mask, joint_write=True))

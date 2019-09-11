@@ -3,6 +3,10 @@ import glob
 from threading import RLock
 import os.path
 from os import remove
+try:
+    reduce  # noqa
+except NameError:
+    from functools import reduce
 
 import tables as tb
 import zmq
@@ -246,5 +250,5 @@ def save_raw_data_from_data_queue(data_queue, filename, mode='a', title='', scan
     '''
     if not scan_parameters:
         scan_parameters = {}
-    with open_raw_data_file(filename, mode='a', title='', scan_parameters=list(dict.iterkeys(scan_parameters))) as raw_data_file:
+    with open_raw_data_file(filename, mode='a', title='', scan_parameters=list(scan_parameters.keys())) as raw_data_file:
         raw_data_file.append(data_queue, scan_parameters=scan_parameters)

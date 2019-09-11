@@ -10,18 +10,33 @@ import zmq
 import numpy as np
 from functools import wraps
 from threading import Event, Thread
-from Queue import Queue
-from collections import namedtuple, Mapping
+try:
+    import Queue as queue
+except ImportError:
+    import queue
+from collections import namedtuple
+try:
+    from collections.abc import Mapping, Iterable  # noqa
+except ImportError:
+    from collections import Mapping, Iterable  # noqa
 from contextlib import contextmanager
 from operator import itemgetter
 import ast
 import inspect
 import sys
+try:
+    basestring  # noqa
+except NameError:
+    basestring = str  # noqa
+try:
+    reduce  # noqa
+except NameError:
+    from functools import reduce
 
 from basil.dut import Dut
 
-from pybar.run_manager import RunManager, RunBase, RunAborted, RunStopped
-from pybar.utils.utils import find_file_dir_up
+from pybar.utils.utils import find_file_dir_up, reraise
+from pybar.run_manager import RunManager, RunBase, RunAborted
 from pybar.fei4.register import FEI4Register
 from pybar.fei4.register_utils import FEI4RegisterUtils, is_fe_ready
 from pybar.daq.fifo_readout import FifoReadout, RxSyncError, EightbTenbError, FifoError, NoDataTimeout, StopTimeout
@@ -46,6 +61,7 @@ class Fei4RunBase(RunBase):
         self._default_run_conf.setdefault('reset_fe', True)
 
         super(Fei4RunBase, self).__init__(conf=conf)
+        self.err_queue = queue.Queue()
 
         # default conf parameters
         if 'working_dir' not in conf:
@@ -57,7 +73,6 @@ class Fei4RunBase(RunBase):
         if 'send_error_msg' not in conf:
             conf.update({'send_error_msg': None})  # bool
 
-        self.err_queue = Queue()
         self.fifo_readout = None
         self.raw_data_file = None
 
@@ -205,7 +220,7 @@ class Fei4RunBase(RunBase):
         if 'fe_configuration' in self._conf:
             last_configuration = self._get_configuration()
             # init config, a number <=0 will also do the initialization (run 0 does not exists)
-            if (not self._conf['fe_configuration'] and not last_configuration) or (isinstance(self._conf['fe_configuration'], (int, long)) and self._conf['fe_configuration'] <= 0):
+            if (not self._conf['fe_configuration'] and not last_configuration) or (isinstance(self._conf['fe_configuration'], (int,)) and self._conf['fe_configuration'] <= 0):
                 if 'chip_address' in self._conf and self._conf['chip_address']:
                     chip_address = self._conf['chip_address']
                     broadcast = False
@@ -226,7 +241,7 @@ class Fei4RunBase(RunBase):
                 else:  # relative path
                     self._conf['fe_configuration'] = FEI4Register(configuration_file=os.path.join(self._conf['working_dir'], self._conf['fe_configuration']))
             # run number
-            elif isinstance(self._conf['fe_configuration'], (int, long)) and self._conf['fe_configuration'] > 0:
+            elif isinstance(self._conf['fe_configuration'], (int,)) and self._conf['fe_configuration'] > 0:
                 self._conf['fe_configuration'] = FEI4Register(configuration_file=self._get_configuration(self._conf['fe_configuration']))
             # assume fe_configuration already initialized
             elif not isinstance(self._conf['fe_configuration'], FEI4Register):
@@ -265,8 +280,8 @@ class Fei4RunBase(RunBase):
         if 'scan_parameters' in self._run_conf:
             if isinstance(self._run_conf['scan_parameters'], basestring):
                 self._run_conf['scan_parameters'] = ast.literal_eval(self._run_conf['scan_parameters'])
-            sp = namedtuple('scan_parameters', field_names=zip(*self._run_conf['scan_parameters'])[0])
-            self.scan_parameters = sp(*zip(*self._run_conf['scan_parameters'])[1])
+            sp = namedtuple('scan_parameters', field_names=list(zip(*self._run_conf['scan_parameters']))[0])
+            self.scan_parameters = sp(*list(zip(*self._run_conf['scan_parameters']))[1])
         else:
             sp = namedtuple_with_defaults('scan_parameters', field_names=[])
             self.scan_parameters = sp()
@@ -314,7 +329,7 @@ class Fei4RunBase(RunBase):
                     # convert to dict
                     dut_configuration = RunManager.open_conf(dut_configuration)
                     # change bit file path
-                    for drv in dut_configuration.iterkeys():
+                    for drv in dut_configuration.keys():
                         if 'bit_file' in dut_configuration[drv] and dut_configuration[drv]['bit_file']:
                             dut_configuration[drv]['bit_file'] = os.path.normpath(dut_configuration[drv]['bit_file'].replace('\\', '/'))
                             # abs path
@@ -393,7 +408,10 @@ class Fei4RunBase(RunBase):
                 raise RunAborted(exc[1])
             # some other error via handle_err(), print traceback
             else:
-                raise exc[0], exc[1], exc[2]
+                try:  # Python 3
+                    raise exc[1].with_traceback(exc[2])
+                except AttributeError:  # Python 2.7
+                    reraise(type=exc[0], value=exc[1], traceback=exc[2])
 
     def cleanup_run(self):
         pass
@@ -445,7 +463,7 @@ class Fei4RunBase(RunBase):
                         return os.path.join(root, cfgfile)
 
         if not run_number:
-            run_numbers = sorted(self._get_run_numbers(status='FINISHED').iterkeys(), reverse=True)
+            run_numbers = sorted(self._get_run_numbers(status='FINISHED').keys(), reverse=True)
             for run_number in run_numbers:
                 cfg_file = find_file(run_number)
                 if cfg_file:

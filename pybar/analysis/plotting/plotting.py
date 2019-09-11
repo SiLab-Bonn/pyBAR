@@ -3,7 +3,6 @@
 import logging
 import math
 from datetime import datetime
-# import itertools
 
 # pyplot is not thread safe since it rely on global parameters: https://github.com/matplotlib/matplotlib/issues/757
 from matplotlib.figure import Figure
@@ -574,7 +573,7 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
     ax = fig.add_subplot(111)
     hist = np.array(hist)
     if plot_range is None:
-        plot_range = range(0, max(1, len(hist)))
+        plot_range = list(range(0, max(1, len(hist))))
     plot_range = np.array(plot_range)
     plot_range = plot_range[plot_range < len(hist)]
     if yerr is not None:
@@ -729,14 +728,14 @@ def create_1d_hist(ax, hist, title=None, x_axis_title=None, y_axis_title=None, b
 #         return (chisquare(observed_values, f_exp=expected_values))[0]
 #         # manual calculation
 #         chisquare = 0
-#         for observed, expected in itertools.izip(list(observed_values), list(expected_values)):
+#         for observed, expected in zip(list(observed_values), list(expected_values)):
 #             chisquare += (float(observed) - float(expected))**2.0 / float(expected)
 #         return chisquare
 
 #     p0 = (amplitude, mean, rms)  # p0 is the initial guess for the fitting coefficients (A, mu and sigma above)
 #     try:
 #         coeff, _ = curve_fit(gauss, bin_centres, h_1d, p0=p0)
-#     except (TypeError, RuntimeError), e:
+#     except (TypeError, RuntimeError) as e:
 #         logging.info('Normal distribution fit failed, %s', e)
 #     else:
     if do_fit:

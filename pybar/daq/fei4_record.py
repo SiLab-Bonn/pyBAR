@@ -1,4 +1,8 @@
 from collections import OrderedDict
+try:
+    basestring  # noqa
+except NameError:
+    basestring = str  # noqa
 
 from basil.utils.BitLogic import BitLogic
 
@@ -70,36 +74,30 @@ class FEI4Record(object):
     #             raise ValueError('Unknown data word: ' + str(self.record_word.tovalue()))
         else:
             self.record_type = "UNKNOWN WORD"
-            self.record_dict.update([('unknown', self.record_word[31:0].tovalue())])
+            self.record_dict.update([('word', self.record_word[31:0].tovalue())])
 
     def __len__(self):
         return len(self.record_dict)
 
     def __getitem__(self, key):
-        if not (isinstance(key, (int, long)) or isinstance(key, basestring)):
-            raise TypeError()
+        if not (isinstance(key, (int,)) or isinstance(key, basestring)):
+            raise TypeError("Wrong key")
         try:
             return self.record_dict[key.lower()]
         except TypeError:
-            return self.record_dict[self.record_dict.iterkeys()[int(key)]]
-
-    def next(self):
-        return self.record_dict.iteritems().next()
-
-    def __iter__(self):
-        return self.record_dict.iteritems()
+            return self.record_dict[list(self.record_dict.keys())[int(key)]]
 
     def __eq__(self, other):
-        try:
+        try:  # is str
             return self.record_type.lower() == other.lower()
-        except Exception:
+        except Exception:  # is FEI4Record
             try:
                 return self.record_type == other.record_type
             except Exception:
                 return False
 
     def __str__(self):
-        return self.record_type + ' {}'.format(' '.join(key + ':' + str(val) for key, val in self.record_dict.iteritems()))
+        return self.record_type + ' {}'.format(' '.join(key + ':' + str(val) for key, val in self.record_dict.items()))
 
     def __repr__(self):
         return repr(self.__str__())

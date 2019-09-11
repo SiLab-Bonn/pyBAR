@@ -6,6 +6,10 @@ After the data taking the data is analyzed and the calibration is written into a
 import logging
 import os
 import ast
+try:
+    basestring  # noqa
+except NameError:
+    basestring = str  # noqa
 
 from matplotlib.backends.backend_pdf import PdfPages
 import tables as tb
@@ -106,16 +110,16 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
         logging.info('Saving calibration plots in: %s', calibration_file + '.pdf')
         output_pdf = PdfPages(calibration_file + '.pdf')
 
-    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(files_per_parameter.items()), term_width=80)
+    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(files_per_parameter), term_width=80)
     progress_bar.start()
     parameter_values = []
     for index, (analyzed_data_file, parameters) in enumerate(files_per_parameter.items()):
-        parameter_values.append(parameters.values()[0][0])
+        parameter_values.append(list(parameters.values())[0][0])
         with tb.open_file(analyzed_data_file, mode="r") as in_file_h5:
             occupancy_masked = mask_columns(pixel_array=in_file_h5.root.HistOcc[:], ignore_columns=ignore_columns)  # mask the not scanned columns for analysis and plotting
             thresholds_masked = mask_columns(pixel_array=in_file_h5.root.HistThresholdFitted[:], ignore_columns=ignore_columns)
             if create_plots:
-                plot_three_way(hist=thresholds_masked, title='Threshold Fitted for ' + parameters.keys()[0] + ' = ' + str(parameters.values()[0][0]), filename=output_pdf)
+                plot_three_way(hist=thresholds_masked, title='Threshold Fitted for ' + list(parameters.keys())[0] + ' = ' + str(list(parameters.values())[0][0]), filename=output_pdf)
                 plsr_dacs = analysis_utils.get_scan_parameter(meta_data_array=in_file_h5.root.meta_data[:])['PlsrDAC']
                 plot_scurves(occupancy_hist=occupancy_masked, scan_parameters=plsr_dacs, scan_parameter_name='PlsrDAC', filename=output_pdf)
             # fill the calibration data arrays

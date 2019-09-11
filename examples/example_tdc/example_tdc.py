@@ -151,7 +151,7 @@ if __name__ == "__main__":
     runmngr.run_run(run=FastThresholdScan)
     runmngr.run_run(run=StuckPixelTuning)
     runmngr.run_run(run=NoiseOccupancyTuning, run_conf={'occupancy_limit': 1000, 'n_triggers': 10000000})  # high occupancy limit to work with strong Sr-90 source
-    runmngr.run_run(run=PlsrDacScan, run_conf={"colpr_address": range(25, 39)})
+    runmngr.run_run(run=PlsrDacScan, run_conf={"colpr_address": list(range(25, 39))})
 
     # TDC calibration
     runmngr.run_run(run=HitOrCalibration, run_conf={

@@ -40,14 +40,14 @@ class GdacTuningStandard(Fei4RunBase):
         commands = []
         commands.extend(self.register.get_commands("ConfMode"))
         # C_Low
-        if "C_Low".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+        if "C_Low".lower() in list(map(lambda x: x.lower(), self.enable_shift_masks)):
             self.register.set_pixel_register_value('C_Low', 1)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         else:
             self.register.set_pixel_register_value('C_Low', 0)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_Low'))
         # C_High
-        if "C_High".lower() in map(lambda x: x.lower(), self.enable_shift_masks):
+        if "C_High".lower() in list(map(lambda x: x.lower(), self.enable_shift_masks)):
             self.register.set_pixel_register_value('C_High', 1)
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=True, name='C_High'))
         else:
@@ -90,7 +90,7 @@ class GdacTuningStandard(Fei4RunBase):
         self.occ_array_sel_pixels_best = select_mask_array.copy()
         self.occ_array_desel_pixels_best = select_mask_array.copy()
         if not self.enable_mask_steps_gdac:
-            self.enable_mask_steps_gdac = range(self.mask_steps)
+            self.enable_mask_steps_gdac = list(range(self.mask_steps))
         for mask_step in self.enable_mask_steps_gdac:
             select_mask_array += make_pixel_mask(steps=self.mask_steps, shift=mask_step)
         for column in bits_set(self.register.get_global_register_value("DisableColumnCnfg")):

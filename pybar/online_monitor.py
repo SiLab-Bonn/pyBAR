@@ -303,12 +303,12 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.setup_filename(**config_data)
 
     def setup_run_config_text(self, conf):
-        for key, value in sorted(conf.iteritems()):
+        for key, value in sorted(conf.items()):
             item = Qt.QListWidgetItem("%s: %s" % (key, value))
             self.run_conf_list_widget.addItem(item)
 
     def setup_global_config_text(self, conf):
-        for key, value in sorted(conf.iteritems()):
+        for key, value in sorted(conf.items()):
             item = Qt.QListWidgetItem("%s: %s" % (key, value))
             self.global_conf_list_widget.addItem(item)
 
@@ -336,7 +336,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
 
     def update_monitor(self, timestamp_start, timestamp_stop, readout_error, scan_parameters, n_hits, n_events):
         self.timestamp_label.setText("Data Timestamp\n%s" % time.asctime(time.localtime(timestamp_stop)))
-        self.scan_parameter_label.setText("Scan Parameters\n%s" % ', '.join('%s: %s' % (str(key), str(val)) for key, val in scan_parameters.iteritems()))
+        self.scan_parameter_label.setText("Scan Parameters\n%s" % ', '.join('%s: %s' % (str(key), str(val)) for key, val in scan_parameters.items()))
         now = ptime.time()
         recent_total_hits = n_hits
         recent_total_events = n_events

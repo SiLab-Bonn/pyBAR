@@ -9,6 +9,14 @@ import time
 import glob
 import collections
 from operator import itemgetter
+try:
+    basestring  # noqa
+except NameError:
+    basestring = str  # noqa
+try:
+    reduce  # noqa
+except NameError:
+    from functools import reduce
 
 import numpy as np
 import tables as tb
@@ -307,7 +315,7 @@ def get_total_n_data_words(files_dict, precise=False):
         if len(files_dict) > 10:
             progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', ETA()], maxval=len(files_dict), term_width=80)
             progress_bar.start()
-        for index, file_name in enumerate(files_dict.iterkeys()):
+        for index, file_name in enumerate(files_dict.keys()):
             with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
                 n_words += in_file_h5.root.raw_data.shape[0]
             if len(files_dict) > 10:
@@ -316,9 +324,9 @@ def get_total_n_data_words(files_dict, precise=False):
             progress_bar.finish()
         return n_words
     else:  # open just first an last file and take the mean to estimate the total numbe rof words
-        with tb.open_file(files_dict.keys()[0], mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(list(files_dict.keys())[0], mode="r") as in_file_h5:  # open the actual file
             n_words += in_file_h5.root.raw_data.shape[0]
-        with tb.open_file(files_dict.keys()[-1], mode="r") as in_file_h5:  # open the actual file
+        with tb.open_file(list(files_dict.keys())[-1], mode="r") as in_file_h5:  # open the actual file
             n_words += in_file_h5.root.raw_data.shape[0]
         return n_words * len(files_dict) / 2
 
@@ -328,14 +336,14 @@ def create_parameter_table(files_dict):
         raise RuntimeError('Cannot create table from file with different scan parameters.')
     # create the parameter names / format for the parameter table
     try:
-        names = ','.join([name for name in files_dict.itervalues().next().keys()])
-        formats = ','.join(['int32' for name in files_dict.itervalues().next().keys()])
-        arrayList = [l for l in files_dict.itervalues().next().values()]
+        names = ','.join([name for name in list(files_dict.values())[0].keys()])
+        formats = ','.join(['int32' for name in list(files_dict.values())[0].keys()])
+        arrayList = [l for l in list(files_dict.values())[0].values()]
     except AttributeError:  # no parameters given, return None
         return
     parameter_table = None
     # create a parameter table with an entry for every read out
-    for file_name, parameters in files_dict.iteritems():
+    for file_name, parameters in files_dict.items():
         with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
             n_parameter_settings = max([len(i) for i in files_dict[file_name].values()])  # determine the number of different parameter settings from the list length of parameter values of the first parameter
             if n_parameter_settings == 0:  # no parameter values, first raw data file has only config info and no other data (meta, raw data, parameter data)
@@ -402,7 +410,7 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
                         result[key] = value
             else:
                 result[one_file] = files_dict[one_file]
-    return collections.OrderedDict(sorted(result.iteritems(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
+    return collections.OrderedDict(sorted(result.items(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
 
 
 def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_interpreted.h5', '_cut.h5', '_result.h5', '_hists.h5'], sort_by_time=True, meta_data_v2=True):
@@ -439,7 +447,7 @@ def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_
     if filter_str:
         if isinstance(filter_str, basestring):
             filter_str = [filter_str]
-        data_files = filter(lambda data_file: not any([(True if x in data_file else False) for x in filter_str]), data_files)
+        data_files = list(filter(lambda data_file: not any([(True if x in data_file else False) for x in filter_str]), data_files))
     if sort_by_time and len(data_files) > 1:
         f_list = {}
         for data_file in data_files:
@@ -553,7 +561,7 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
                     logging.warning('Scan parameter value(s) from %s exists already, do not add to result', file_name)
             else:
                 files_dict[file_name] = scan_parameter_values
-    return collections.OrderedDict(sorted(files_dict.iteritems(), key=itemgetter(1)) if sort else files_dict)
+    return collections.OrderedDict(sorted(files_dict.items(), key=itemgetter(1)) if sort else files_dict)
 
 
 def check_parameter_similarity(files_dict):
@@ -562,13 +570,13 @@ def check_parameter_similarity(files_dict):
 
     """
     try:
-        parameter_names = files_dict.itervalues().next().keys()  # get the parameter names of the first file, to check if these are the same in the other files
-    except AttributeError:  # if there is no parameter at all
-        if any(i is not None for i in files_dict.itervalues()):  # check if there is also no parameter for the other files
+        parameter_names = list(files_dict.values())[0].keys()  # get the parameter names of the first file, to check if these are the same in the other files
+    except AttributeError:  # if there is no parameter at all, value is None
+        if any(i is not None for i in files_dict.values()):  # check if there is also no parameters (None) for the other files
             return False
         else:
             return True
-    if any(parameter_names != i.keys() for i in files_dict.itervalues()):
+    if any(set(parameter_names) != set(i.keys()) for i in list(files_dict.values())[1:]):
         return False
     return True
 
@@ -586,7 +594,7 @@ def combine_meta_data(files_dict, meta_data_v2=True):
         logging.info("Combine the meta data from %d files", len(files_dict))
     # determine total length needed for the new combined array, thats the fastest way to combine arrays
     total_length = 0  # the total length of the new table
-    for file_name in files_dict.iterkeys():
+    for file_name in files_dict.keys():
         with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
             total_length += in_file_h5.root.meta_data.shape[0]
 
@@ -613,7 +621,7 @@ def combine_meta_data(files_dict, meta_data_v2=True):
     index = 0
 
     # fill actual result array
-    for file_name in files_dict.iterkeys():
+    for file_name in files_dict.keys():
         with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
             array_length = in_file_h5.root.meta_data.shape[0]
             meta_data_combined[index:index + array_length] = in_file_h5.root.meta_data[:]

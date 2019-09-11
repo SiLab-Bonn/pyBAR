@@ -46,7 +46,7 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
         meta_data = analyze_raw_data.out_file_h5.root.meta_data[:]
         scan_parameters_dict = get_scan_parameter(meta_data)
         inner_loop_parameter_values = scan_parameters_dict[next(reversed(scan_parameters_dict))]  # inner loop parameter name is unknown
-        scan_parameter_names = scan_parameters_dict.keys()
+        scan_parameter_names = list(scan_parameters_dict.keys())
 #         col_row_combinations = get_unique_scan_parameter_combinations(analyze_raw_data.out_file_h5.root.meta_data[:], scan_parameters=('column', 'row'), scan_parameter_columns_only=True)
 
         meta_data_table_at_scan_parameter = get_unique_scan_parameter_combinations(meta_data, scan_parameters=scan_parameter_names)
@@ -204,10 +204,10 @@ class HitOrCalibration(Fei4RunBase):
             commands = []
             commands.extend(self.register.get_commands("ConfMode"))
             single_pixel_enable_mask = make_pixel_mask_from_col_row([column], [row])
-            map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_enable_mask), self.enable_shift_masks)
+            list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_enable_mask), self.enable_shift_masks))
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=self.enable_shift_masks, joint_write=True))
             single_pixel_disable_mask = make_pixel_mask_from_col_row([column], [row], default=1, value=0)
-            map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_disable_mask), self.disable_shift_masks)
+            list(map(lambda mask_name: self.register.set_pixel_register_value(mask_name, single_pixel_disable_mask), self.disable_shift_masks))
             commands.extend(self.register.get_commands("WrFrontEnd", same_mask_for_all_dc=False, dcs=dcs, name=self.disable_shift_masks, joint_write=True))
             self.register.set_global_register_value("Colpr_Addr", inject_double_column(column))
             commands.append(self.register.get_commands("WrRegister", name=["Colpr_Addr"])[0])
