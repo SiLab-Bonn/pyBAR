@@ -493,6 +493,9 @@ class Fei4RunBase(RunBase):
         if diff:
             logging.info('Changing scan parameter(s): %s', ', '.join([('%s=%s' % (name, fields[name])) for name in diff]))
 
+    def data_words_per_second(self):
+        return self.fifo_readout.data_words_per_second()[0]
+
     @contextmanager
     def readout(self, *args, **kwargs):
         timeout = kwargs.pop('timeout', 10.0)

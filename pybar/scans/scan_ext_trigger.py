@@ -75,7 +75,7 @@ class ExtTriggerScan(Fei4RunBase):
             start = time()
             while not self.stop_run.wait(1.0):
                 if not got_data:
-                    if self.fifo_readout.data_words_per_second() > 0:
+                    if self.data_words_per_second() > 0:
                         got_data = True
                         logging.info('Taking data...')
                         if self.max_triggers:

@@ -93,7 +93,7 @@ class NoiseOccupancyTuning(Fei4RunBase):
                         self.pbar.close()
                     self.stop('Finished sending %d triggers' % self.n_triggers)
                 if not got_data:
-                    if self.fifo_readout.data_words_per_second() > 0:
+                    if self.data_words_per_second() > 0:
                         got_data = True
                         logging.info('Taking data...')
                         self.pbar = tqdm(total=self.total_scan_time, ncols=80)
