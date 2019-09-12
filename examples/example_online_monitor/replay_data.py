@@ -11,7 +11,7 @@ import numpy as np
 import tables as tb
 
 import zmq
-import progressbar
+from tqdm import tqdm
 
 from pybar.daq.fei4_raw_data import send_data
 
@@ -24,8 +24,7 @@ def transfer_file(file_name, socket):  # Function to open the raw data file and 
             scan_parameter_names = in_file_h5.root.scan_parameters.dtype.names
         except tb.NoSuchNodeError:
             scan_parameter_names = None
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=meta_data.shape[0], term_width=80)
-        progress_bar.start()
+        pbar = tqdm(total=meta_data.shape[0], ncols=80)
         for index, (index_start, index_stop) in enumerate(np.column_stack((meta_data['index_start'], meta_data['index_stop']))):
             data = []
             data.append(raw_data[index_start:index_stop])
@@ -36,8 +35,8 @@ def transfer_file(file_name, socket):  # Function to open the raw data file and 
             else:
                 send_data(socket, data)
             time.sleep(meta_data[index]['timestamp_stop'] - meta_data[index]['timestamp_start'])
-            progress_bar.update(index)
-        progress_bar.finish()
+            pbar.update(index - pbar.n)
+        pbar.close()
 
 
 if __name__ == '__main__':

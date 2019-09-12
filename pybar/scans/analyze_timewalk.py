@@ -9,7 +9,7 @@ import tables as tb
 import numpy as np
 from scipy.interpolate import interp1d
 
-import progressbar
+from tqdm import tqdm
 
 from pybar.analysis import analysis_utils
 
@@ -46,8 +46,7 @@ def get_time_walk_hist(hit_file, charge_calibration, event_status_select_mask, e
         cluster_hit_table = in_file_h5.root.ClusterHits
 
         logging.info('Select hits and create TDC histograms for %d cut conditions', len(hit_selection_conditions))
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=cluster_hit_table.shape[0], term_width=80)
-        progress_bar.start()
+        pbar = tqdm(total=cluster_hit_table.shape[0], ncols=80)
         n_hits, n_selected_hits = 0, 0
         timewalk = np.zeros(shape=(200, max_timesamp), dtype=np.float32)
         for cluster_hits, _ in analysis_utils.data_aligned_at_events(cluster_hit_table, chunk_size=10000000):
@@ -65,8 +64,8 @@ def get_time_walk_hist(hit_file, charge_calibration, event_status_select_mask, e
                 actual_timewalk, xedges, yedges = np.histogram2d(charge_values, tdc_timestamp, bins=timewalk.shape, range=((0, max_charge), (0, max_timesamp)))
                 timewalk += actual_timewalk
 
-            progress_bar.update(n_hits)
-        progress_bar.finish()
+            pbar.update(n_hits - pbar.n)
+        pbar.close()
         logging.info('Selected %d of %d hits = %1.1f percent', n_selected_hits, n_hits, float(n_selected_hits) / float(n_hits) * 100.0)
     return timewalk, xedges, yedges
 

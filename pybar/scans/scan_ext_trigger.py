@@ -1,8 +1,9 @@
 import logging
-import numpy as np
-import progressbar
 from time import time
 from threading import Timer
+
+from tqdm import tqdm
+import numpy as np
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import invert_pixel_mask, make_box_pixel_mask_from_col_row
@@ -78,20 +79,20 @@ class ExtTriggerScan(Fei4RunBase):
                         got_data = True
                         logging.info('Taking data...')
                         if self.max_triggers:
-                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=self.max_triggers, poll=10, term_width=80).start()
+                            self.pbar = tqdm(total=self.max_triggers, ncols=80)
                         else:
-                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
+                            self.pbar = tqdm(total=self.scan_timeout, ncols=80)
                 else:
                     triggers = self.dut['TLU']['TRIGGER_COUNTER']
                     try:
                         if self.max_triggers:
-                            self.progressbar.update(triggers)
+                            self.pbar.update(triggers - self.pbar.n)
                         else:
-                            self.progressbar.update(time() - start)
+                            self.pbar.update(time() - start - self.pbar.n)
                     except ValueError:
                         pass
                     if self.max_triggers and triggers >= self.max_triggers:
-                        self.progressbar.finish()
+                        self.pbar.close()
                         self.stop(msg='Trigger limit was reached: %i' % self.max_triggers)
         logging.info('Total amount of triggers collected: %d', self.dut['TLU']['TRIGGER_COUNTER'])
 
@@ -124,7 +125,7 @@ class ExtTriggerScan(Fei4RunBase):
 
         def timeout():
             try:
-                self.progressbar.finish()
+                self.pbar.close()
             except AttributeError:
                 pass
             self.stop(msg='Scan timeout was reached')

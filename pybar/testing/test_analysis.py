@@ -3,10 +3,9 @@
 import unittest
 import os
 
+from tqdm import tqdm
 import tables as tb
 import numpy as np
-
-import progressbar
 
 from pixel_clusterizer.clusterizer import HitClusterizer
 
@@ -117,17 +116,17 @@ class TestAnalysis(unittest.TestCase):
         os.remove(os.path.join(tests_data_folder, 'ext_trigger_scan_tlu_interpreted.h5'))
 
     def test_libraries_stability(self):  # calls 50 times the constructor and destructor to check the libraries
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.ETA()], maxval=50, term_width=80)
-        progress_bar.start()
-        for i in range(50):
+        max_iter = 50
+        pbar = tqdm(total=max_iter, ncols=80)
+        for index in range(max_iter):
             interpreter = PyDataInterpreter()
             histogram = PyDataHistograming()
             clusterizer = HitClusterizer()
             del interpreter
             del histogram
             del clusterizer
-            progress_bar.update(i)
-        progress_bar.finish()
+            pbar.update(index - pbar.n)
+        pbar.close()
 
     def test_data_alignement(self):  # Test if the data alignment is correct (important to detect 32/64 bit related issues)
         hits = np.empty((1,), dtype=[('event_number', np.uint64),

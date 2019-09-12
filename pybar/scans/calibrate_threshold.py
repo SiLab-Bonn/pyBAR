@@ -15,7 +15,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import tables as tb
 import numpy as np
 
-import progressbar
+from tqdm import tqdm
 
 from pybar_fei4_interpreter import data_struct
 
@@ -110,8 +110,7 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
         logging.info('Saving calibration plots in: %s', calibration_file + '.pdf')
         output_pdf = PdfPages(calibration_file + '.pdf')
 
-    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(files_per_parameter), term_width=80)
-    progress_bar.start()
+    pbar = tqdm(total=len(files_per_parameter), ncols=80)
     parameter_values = []
     for index, (analyzed_data_file, parameters) in enumerate(files_per_parameter.items()):
         parameter_values.append(list(parameters.values())[0][0])
@@ -126,8 +125,8 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
             mean_threshold_calibration[index] = np.ma.mean(thresholds_masked)
             mean_threshold_rms_calibration[index] = np.ma.std(thresholds_masked)
             threshold_calibration[:, :, index] = thresholds_masked.T
-        progress_bar.update(index)
-    progress_bar.finish()
+        pbar.update(index - pbar.n)
+    pbar.close()
 
     with tb.open_file(calibration_file + '.h5', mode="w") as out_file_h5:
         store_calibration_data_as_array(out_file_h5=out_file_h5, mean_threshold_calibration=mean_threshold_calibration, mean_threshold_rms_calibration=mean_threshold_rms_calibration, threshold_calibration=threshold_calibration, parameter_name=parameter_name, parameter_values=parameter_values)

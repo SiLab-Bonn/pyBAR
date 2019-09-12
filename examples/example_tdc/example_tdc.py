@@ -7,7 +7,7 @@ import numpy as np
 import tables as tb
 from scipy.optimize import curve_fit, leastsq
 
-import progressbar
+from tqdm import tqdm
 
 from pyLandau import landau
 
@@ -78,9 +78,8 @@ def fit_landau_bootstrap(x, y, p0, n_sigma=1, n_iterations=500, **kwargs):  # fi
     s_res = np.std(residuals)
     ps = []
 
-    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=n_iterations, term_width=80)
-    progress_bar.start()
-    for i in range(n_iterations):
+    pbar = tqdm(total=n_iterations, ncols=80)
+    for index in range(n_iterations):
         if yerr is None:
             randomDelta = np.random.normal(0.0, s_res, len(y))
             randomdataY = y + randomDelta
@@ -89,8 +88,8 @@ def fit_landau_bootstrap(x, y, p0, n_sigma=1, n_iterations=500, **kwargs):  # fi
             randomdataY = y + randomDelta
         randomfit, _ = leastsq(errfunc, p0, args=(x, randomdataY), full_output=0)
         ps.append(randomfit)
-        progress_bar.update(i)
-    progress_bar.finish()
+        pbar.update(index - pbar.n)
+    pbar.close()
 
     mean_pfit, err_pfit = np.mean(ps, 0), n_sigma * np.std(ps, 0)
 

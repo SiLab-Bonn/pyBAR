@@ -13,7 +13,7 @@ import matplotlib.patches as mpatches
 import numpy as np
 import tables as tb
 
-import progressbar
+from tqdm import tqdm
 
 from pybar.run_manager import RunManager
 from pybar.scans.scan_analog import AnalogScan
@@ -147,9 +147,7 @@ class PlsrDacTransientCalibration(AnalogScan):
         data_out.attrs.trigger_level_offset = self.trigger_level_offset
         trigger_levels = []
 
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(scan_parameter_values), term_width=80)
-        progress_bar.start()
-
+        pbar = tqdm(total=len(scan_parameter_values), ncols=80)
         for index, scan_parameter_value in enumerate(scan_parameter_values):
             if self.stop_run.is_set():
                 break
@@ -192,12 +190,12 @@ class PlsrDacTransientCalibration(AnalogScan):
             data_out[index, :] = voltages[:]
             trigger_level = float(self.dut['Oscilloscope'].get_trigger_level())
             trigger_levels.append(trigger_level)
-            progress_bar.update(index)
+            pbar.update(index - pbar.n)
             self.dut['Oscilloscope'].set_vertical_scale(self.vertical_scale, channel=self.channel)
 
         time_out[:] = times
         data_out.attrs.trigger_levels = trigger_levels
-        progress_bar.finish()
+        pbar.close()
 
     def analyze(self):
         logging.info('Analyzing the PlsrDAC waveforms')
@@ -212,15 +210,13 @@ class PlsrDacTransientCalibration(AnalogScan):
             trigger_levels = in_file_h5.root.PlsrDACwaveforms._v_attrs.trigger_levels
             trigger_level_offset = in_file_h5.root.PlsrDACwaveforms._v_attrs.trigger_level_offset
             fit_ranges = in_file_h5.root.PlsrDACwaveforms._v_attrs.fit_ranges
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=data.shape[0], term_width=80)
+            pbar = tqdm(total=data.shape[0], ncols=80)
 
             with tb.open_file(self.output_filename + '_interpreted.h5', 'w') as out_file_h5:
                 description = [('PlsrDAC', np.uint32), ('voltage_step', np.float)]  # output data table description
                 data_array = np.zeros((data.shape[0],), dtype=description)
                 data_table = out_file_h5.create_table(out_file_h5.root, name='plsr_dac_data', description=np.zeros((1,), dtype=description).dtype, title='Voltage steps from transient PlsrDAC calibration scan')
                 with PdfPages(self.output_filename + '_interpreted.pdf') as output_pdf:
-                    progress_bar.start()
-
                     for index in range(data.shape[0]):
                         voltages = data[index]
                         trigger_level = trigger_levels[index]
@@ -270,7 +266,7 @@ class PlsrDacTransientCalibration(AnalogScan):
                         handles.append(mpatches.Patch(color='none', label=delta_string))
                         ax.legend(handles=handles, loc=4)  # lower right
                         output_pdf.savefig(fig)
-                        progress_bar.update(index)
+                        pbar.update(index - pbar.n)
                     data_table.append(data_array[np.isfinite(data_array['voltage_step'])])  # store valid data
 
                     # Plot, fit and store linear PlsrDAC transfer function
@@ -282,7 +278,7 @@ class PlsrDacTransientCalibration(AnalogScan):
                     # Store result in file
                     self.register.calibration_parameters['Vcal_Coeff_0'] = np.nan_to_num(slope_fit[0] * 1000.0)  # store in mV
                     self.register.calibration_parameters['Vcal_Coeff_1'] = np.nan_to_num(slope_fit[1] * 1000.0)  # store in mV/DAC
-            progress_bar.finish()
+            pbar.close()
 
 
 if __name__ == "__main__":

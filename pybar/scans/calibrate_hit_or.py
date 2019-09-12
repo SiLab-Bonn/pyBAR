@@ -7,7 +7,7 @@ import os.path
 import numpy as np
 import tables as tb
 
-import progressbar
+from tqdm import tqdm
 
 from pybar.fei4.register_utils import make_pixel_mask_from_col_row, make_box_pixel_mask_from_col_row
 from pybar.fei4_run_base import Fei4RunBase
@@ -63,9 +63,7 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
             logging.info('Create calibration')
             calibration_data = np.full(shape=(80, 336, len(inner_loop_parameter_values), 4), fill_value=np.nan, dtype='f4')  # result of the calibration is a histogram with col_index, row_index, plsrDAC value, mean discrete tot, rms discrete tot, mean tot from TDC, rms tot from TDC
 
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(event_ranges_per_parameter), term_width=80)
-            progress_bar.start()
-
+            pbar = tqdm(total=len(event_ranges_per_parameter), ncols=80)
             for index, (actual_scan_parameter_values, event_start, event_stop) in enumerate(event_ranges_per_parameter):
                 if event_stop is None:  # happens for the last chunk
                     event_stop = hits[-1]['event_number'] + 1
@@ -103,8 +101,8 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                 calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 2] = np.std(tot)
                 calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 3] = np.std(tdc)
 
-                progress_bar.update(index)
-            progress_bar.finish()
+                pbar.update(index - pbar.n)
+            pbar.close()
 
             calibration_data_out = calibration_data_file.create_carray(calibration_data_file.root, name='HitOrCalibration', title='Hit OR calibration data', atom=tb.Atom.from_dtype(calibration_data.dtype), shape=calibration_data.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             calibration_data_out[:] = calibration_data

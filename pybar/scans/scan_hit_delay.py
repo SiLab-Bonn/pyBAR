@@ -30,7 +30,7 @@ from scipy.optimize import curve_fit, OptimizeWarning
 from scipy.interpolate import interp1d
 from scipy.special import erf
 
-import progressbar
+from tqdm import tqdm
 
 from pybar_fei4_interpreter.analysis_utils import hist_1d_index, hist_3d_index
 from pybar.fei4.register_utils import invert_pixel_mask
@@ -150,11 +150,8 @@ def analyze_hit_delay(raw_data_file):
         tot_array = np.zeros((16,), dtype=np.uint32)  # tot array of actual PlsrDAC
 
         logging.info('Store histograms for PlsrDAC values ' + str(plsr_dac))
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=max(plsr_dac) - min(plsr_dac), term_width=80)
-
+        pbar = tqdm(total=max(plsr_dac) - min(plsr_dac), ncols=80)
         for index, (parameters, hits) in enumerate(get_hits_of_scan_parameter(raw_data_file + '_interpreted.h5', scan_parameters, try_speedup=True, chunk_size=10000000)):
-            if index == 0:
-                progress_bar.start()  # Start after the event index is created to get reasonable ETA
             actual_plsr_dac, actual_injection_delay = parameters[0], parameters[1]
             column, row, rel_bcid, tot = hits['column'] - 1, hits['row'] - 1, hits['relative_BCID'], hits['tot']
             bcid_array_fast = hist_3d_index(column, row, rel_bcid, shape=(80, 336, 16))
@@ -164,7 +161,7 @@ def analyze_hit_delay(raw_data_file):
             if old_plsr_dac != actual_plsr_dac:  # Store the data of the actual PlsrDAC value
                 if old_plsr_dac:  # Special case for the first PlsrDAC setting
                     store_bcid_histograms(bcid_array, tot_array, tot_pixel_array)
-                    progress_bar.update(old_plsr_dac - min(plsr_dac))
+                    pbar.update(old_plsr_dac - min(plsr_dac) - pbar.n)
                 # Reset the histrograms for the next PlsrDAC setting
                 bcid_array = np.zeros((80, 336, len(injection_delay), 16), dtype=np.uint16)
                 tot_pixel_array = np.zeros((80, 336, len(injection_delay), 16), dtype=np.uint16)
@@ -175,18 +172,15 @@ def analyze_hit_delay(raw_data_file):
             tot_pixel_array[:, :, injection_delay_index, :] += tot_pixel_array_fast
             tot_array += tot_array_fast
         store_bcid_histograms(bcid_array, tot_array, tot_pixel_array)  # save histograms of last PlsrDAC setting
-        progress_bar.finish()
+        pbar.close()
 
     # Take the mean relative BCID histogram of each PlsrDAC value and calculate the delay for each pixel
     with tb.open_file(raw_data_file + '_analyzed.h5', mode="r+") as in_file_h5:
         hists_folder = in_file_h5.create_group(in_file_h5.root, 'PixelHistsBcidJumps')
         plsr_dac_values = in_file_h5.root.PixelHistsMeanRelBcid._v_attrs.plsr_dac_values
 
-        # Info output with progressbar
         logging.info('Detect BCID jumps with pixel based S-Curve fits for PlsrDACs ' + str(plsr_dac_values))
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(plsr_dac_values), term_width=80)
-        progress_bar.start()
-
+        pbar = tqdm(total=len(plsr_dac_values), ncols=80)
         for index, node in enumerate(in_file_h5.root.PixelHistsMeanRelBcid):  # loop over all mean relative BCID hists for all PlsrDAC values and determine the BCID jumps
             actual_plsr_dac = int(re.search(r'\d+', node.name).group())  # actual node plsr dac value
             # Select the S-curves and interpolate Nans
@@ -208,7 +202,7 @@ def analyze_hit_delay(raw_data_file):
             out = in_file_h5.create_carray(hists_folder, name='PixelHistsBcidJumpsPlsrDac_%03d' % actual_plsr_dac, title='BCID jumps per pixel for PlsrDAC ' + str(actual_plsr_dac), atom=tb.Atom.from_dtype(result_array.dtype), shape=result_array.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             out.attrs.dimensions = 'column, row, BCID first jump, delay first jump, BCID second jump, delay second jump'
             out[:] = result_array
-            progress_bar.update(index)
+            pbar.update(index - pbar.n)
 
     # Calibrate the step size of the injection delay and create absolute and relative (=time walk) hit delay histograms
     with tb.open_file(raw_data_file + '_analyzed.h5', mode="r+") as out_file_h5:

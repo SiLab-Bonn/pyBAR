@@ -7,7 +7,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import numpy as np
 from scipy import stats
 
-import progressbar
+from tqdm import tqdm
 
 from pybar.daq.readout_utils import get_col_row_array_from_data_record_array, is_fe_word, is_data_record, logical_and
 # from pybar.daq.readout_utils import data_array_from_data_iterable
@@ -147,17 +147,17 @@ class ThresholdBaselineTuning(Fei4RunBase):
                     while not self.stop_run.wait(0.1):
                         if self.register_utils.is_ready:
                             if got_data:
-                                self.progressbar.finish()
+                                self.pbar.close()
                             logging.info('Finished sending %d triggers', self.n_triggers)
                             break
                         if not got_data:
                             if self.fifo_readout.data_words_per_second() > 0:
                                 got_data = True
                                 logging.info('Taking data...')
-                                self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=total_scan_time, poll=10, term_width=80).start()
+                                self.pbar = tqdm(total=total_scan_time, ncols=80)
                         else:
                             try:
-                                self.progressbar.update(time() - start)
+                                self.pbar.update(time() - start - self.pbar.n)
                             except ValueError:
                                 pass
                 # use Numpy for analysis and histogramming
