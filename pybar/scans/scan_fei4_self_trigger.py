@@ -3,7 +3,7 @@ from time import time
 from threading import Timer
 from contextlib import contextmanager
 
-import progressbar
+from tqdm import tqdm
 import numpy as np
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
@@ -70,12 +70,14 @@ class Fei4SelfTriggerScan(Fei4RunBase):
                         if self.data_words_per_second() > 0:
                             got_data = True
                             logging.info('Taking data...')
-                            self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.scan_timeout, poll=10, term_width=80).start()
+                            self.pbar = tqdm(total=self.scan_timeout, ncols=80)
                     else:
                         try:
-                            self.progressbar.update(time() - start)
+                            self.pbar.update(time() - start - self.pbar.n)
                         except ValueError:
                             pass
+                if got_data:
+                    self.pbar.close()
 
     def analyze(self):
         with AnalyzeRawData(raw_data_file=self.output_filename, create_pdf=True) as analyze_raw_data:
@@ -117,7 +119,7 @@ class Fei4SelfTriggerScan(Fei4RunBase):
 
         def timeout():
             try:
-                self.progressbar.finish()
+                self.pbar.close()
             except AttributeError:
                 pass
             self.stop(msg='Scan timeout was reached')

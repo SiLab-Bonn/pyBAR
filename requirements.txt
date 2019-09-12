@@ -7,10 +7,10 @@ bitarray>=0.8.1
 contextlib2
 matplotlib
 numpy
-progressbar-latest>=2.4
 tables
 pyyaml
 scipy
+tqdm
 
 # Additional functionality (support for lab devices, unit testing, online monitor)
 mock

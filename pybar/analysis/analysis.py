@@ -10,7 +10,7 @@ import re
 import numpy as np
 import tables as tb
 
-import progressbar
+from tqdm import tqdm
 
 from pybar_fei4_interpreter import data_struct
 from pybar_fei4_interpreter.data_histograming import PyDataHistograming
@@ -61,9 +61,7 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
             index = 0  # index where to start the read out, 0 at the beginning, increased during looping
             best_chunk_size = chunk_size
 
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=hit_table.shape[0], term_width=80)
-            progress_bar.start()
-
+            pbar = tqdm(total=hit_table.shape[0], ncols=80)
             # loop over the selected events
             for parameter_index, parameter_range in enumerate(parameter_ranges):
                 logging.debug('Analyze time stamp ' + str(parameter_range[0]) + ' and data from events = [' + str(parameter_range[2]) + ',' + str(parameter_range[3]) + '[ ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.0))) + '%')
@@ -74,7 +72,7 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
                 for hits, index in analysis_utils.data_aligned_at_events(hit_table, start_event_number=parameter_range[2], stop_event_number=parameter_range[3], start_index=index, chunk_size=best_chunk_size):
                     analyze_data.analyze_hits(hits)  # analyze the selected hits in chunks
                     readout_hit_len += hits.shape[0]
-                    progress_bar.update(index)
+                    pbar.update(index - pbar.n)
                 best_chunk_size = int(1.5 * readout_hit_len) if int(1.05 * readout_hit_len) < chunk_size else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
 
                 # get and store results
@@ -86,7 +84,7 @@ def analyze_beam_spot(scan_base, combine_n_readouts=1000, chunk_size=10000000, p
                 time_stamp.append(parameter_range[0])
                 if plot_occupancy_hists:
                     plotting.plot_occupancy(occupancy_array[:, :, 0], title='Occupancy for events between ' + time.strftime('%H:%M:%S', time.localtime(parameter_range[0])) + ' and ' + time.strftime('%H:%M:%S', time.localtime(parameter_range[1])), filename=output_pdf)
-            progress_bar.finish()
+            pbar.close()
     plotting.plot_scatter([i * 250 for i in x], [i * 50 for i in y], title='Mean beam position', x_label='x [um]', y_label='y [um]', marker_style='-o', filename=output_pdf)
     if output_file:
         with tb.open_file(output_file, mode="a") as out_file_h5:
@@ -192,9 +190,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
 
             total_cluster = cluster_table.shape[0]
 
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=total_cluster, term_width=80)
-            progress_bar.start()
-
+            pbar = tqdm(total=total_cluster, ncols=80)
             # loop over the selected events
             for parameter_index, parameter_range in enumerate(parameter_ranges):
                 logging.debug('Analyze time stamp ' + str(parameter_range[0]) + ' and data from events = [' + str(parameter_range[2]) + ',' + str(parameter_range[3]) + '[ ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.0))) + '%')
@@ -213,7 +209,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
                         hist[0] = (parameter_range[3] - parameter_range[2]) - len(n_cluster_per_event)  # add the events without any cluster
                     readout_cluster_len += clusters.shape[0]
                     total_cluster -= len(clusters)
-                    progress_bar.update(index)
+                    pbar.update(index - pbar.n)
                 best_chunk_size = int(1.5 * readout_cluster_len) if int(1.05 * readout_cluster_len) < chunk_size else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
 
                 if plot_n_cluster_hists:
@@ -228,7 +224,7 @@ def analyse_n_cluster_per_event(scan_base, include_no_cluster=False, time_line_a
                         start_time_set = True
                     time_stamp.append((parameter_range[0] - start_time) / 60.0)
                 n_cluster.append(hist)
-            progress_bar.finish()
+            pbar.close()
             if total_cluster != 0:
                 logging.warning('Not all clusters were selected during analysis. Analysis is therefore not exact')
 
@@ -272,16 +268,15 @@ def select_hits_from_cluster_info(input_file_hits, output_file_hits, cluster_siz
             hit_table_out = out_hit_file_h5.create_table(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             cluster_table = in_hit_file_h5.root.Cluster
             last_word_number = 0
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=cluster_table.shape[0], term_width=80)
-            progress_bar.start()
+            pbar = tqdm(total=cluster_table.shape[0], ncols=80)
             for data, index in analysis_utils.data_aligned_at_events(cluster_table, chunk_size=chunk_size):
                 selected_events_1 = analysis_utils.get_events_with_cluster_size(event_number=data['event_number'], cluster_size=data['size'], condition=cluster_size_condition)  # select the events with clusters of a certain size
                 selected_events_2 = analysis_utils.get_events_with_n_cluster(event_number=data['event_number'], condition=n_cluster_condition)  # select the events with a certain cluster number
                 selected_events = analysis_utils.get_events_in_both_arrays(selected_events_1, selected_events_2)  # select events with both conditions above
                 logging.debug('Selected ' + str(len(selected_events)) + ' events with ' + n_cluster_condition + ' and ' + cluster_size_condition)
                 last_word_number = analysis_utils.write_hits_in_events(hit_table_in=in_hit_file_h5.root.Hits, hit_table_out=hit_table_out, events=selected_events, start_hit_word=last_word_number)  # write the hits of the selected events into a new table
-                progress_bar.update(index)
-            progress_bar.finish()
+                pbar.update(index - pbar.n)
+            pbar.close()
             in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data note to new file
 
 
@@ -320,8 +315,7 @@ def select_hits(input_file_hits, output_file_hits, condition=None, cluster_size_
                 hit_table_out = out_hit_file_h5.create_table(out_hit_file_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                 cluster_table = in_hit_file_h5.root.Cluster
                 last_word_number = 0
-                progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=cluster_table.shape[0], term_width=80)
-                progress_bar.start()
+                pbar = tqdm(total=cluster_table.shape[0], ncols=80)
                 for data, index in analysis_utils.data_aligned_at_events(cluster_table, chunk_size=chunk_size):
                     if cluster_size_condition is not None:
                         selected_events = analysis_utils.get_events_with_cluster_size(event_number=data['event_number'], cluster_size=data['size'], condition='cluster_size == ' + str(cluster_size_condition))  # select the events with only 1 hit cluster
@@ -333,8 +327,8 @@ def select_hits(input_file_hits, output_file_hits, condition=None, cluster_size_
                     else:
                         raise RuntimeError('Cannot understand cluster selection criterion')
                     last_word_number = analysis_utils.write_hits_in_events(hit_table_in=in_hit_file_h5.root.Hits, hit_table_out=hit_table_out, events=selected_events, start_hit_word=last_word_number, condition=condition, chunk_size=chunk_size)  # write the hits of the selected events into a new table
-                    progress_bar.update(index)
-                progress_bar.finish()
+                    pbar.update(index - pbar.n)
+                pbar.close()
                 in_hit_file_h5.root.meta_data.copy(out_hit_file_h5.root)  # copy meta_data note to new file
 
 
@@ -383,8 +377,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
                         analyze_data.create_cluster_size_hist = True
                         analyze_data.create_cluster_tot_hist = True
                         analyze_data.histogram.set_no_scan_parameter()  # one has to tell histogram the # of scan parameters for correct occupancy hist allocation
-                        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=hit_table.shape[0], term_width=80)
-                        progress_bar.start()
+                        pbar = tqdm(total=hit_table.shape[0], ncols=80)
                         for parameter_index, parameter_range in enumerate(parameter_ranges):  # loop over the selected events
                             analyze_data.reset()  # resets the data of the last analysis
                             logging.debug('Analyze GDAC = ' + str(parameter_range[0]) + ' ' + str(int(float(float(parameter_index) / float(len(parameter_ranges)) * 100.0))) + '%')
@@ -398,7 +391,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
                                 total_hits += hits.shape[0]
                                 analyze_data.analyze_hits(hits)  # analyze the selected hits in chunks
                                 readout_hit_len += hits.shape[0]
-                                progress_bar.update(index)
+                                pbar.update(index - pbar.n)
                             chunk_size = int(1.05 * readout_hit_len) if int(1.05 * readout_hit_len) < max_chunk_size else max_chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
                             if chunk_size < 50:  # limit the lower chunk size, there can always be a crazy event with more than 20 hits
                                 chunk_size = 50
@@ -417,7 +410,7 @@ def analyze_cluster_size_per_scan_parameter(input_file_hits, output_file_cluster
                                 cluster_size_total = np.vstack([cluster_size_total, cluster_size_hist])
 
                             total_hits_2 += np.sum(occupancy)
-                        progress_bar.finish()
+                        pbar.close()
                         if total_hits != total_hits_2:
                             logging.warning('Analysis shows inconsistent number of hits. Check needed!')
                         logging.info('Analyzed %d hits!', total_hits)
@@ -463,14 +456,13 @@ def histogram_cluster_table(analyzed_data_file, output_file, chunk_size=10000000
                 histogram.set_no_scan_parameter()
 
             logging.info('Histogram cluster seeds...')
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=in_file_h5.root.Cluster.shape[0], term_width=80)
-            progress_bar.start()
+            pbar = tqdm(total=in_file_h5.root.Cluster.shape[0], ncols=80)
             total_cluster = 0  # to check analysis
             for cluster, index in analysis_utils.data_aligned_at_events(in_file_h5.root.Cluster, chunk_size=chunk_size):
                 total_cluster += len(cluster)
                 histogram.add_cluster_seed_hits(cluster, len(cluster))
-                progress_bar.update(index)
-            progress_bar.finish()
+                pbar.update(index - pbar.n)
+            pbar.close()
 
             filter_table = tb.Filters(complib='blosc', complevel=5, fletcher32=False)  # compression of the written data
             occupancy_array = histogram.get_occupancy().T

@@ -18,7 +18,7 @@ try:
 except NameError:
     from functools import reduce
 
-import progressbar
+from tqdm import tqdm
 import numpy as np
 import tables as tb
 import numexpr as ne
@@ -274,8 +274,7 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
             index = 0  # index where to start the read out, 0 at the beginning, increased during looping, variable for read speed up
             best_chunk_size = chunk_size  # variable for read speed up
             total_cluster = 0
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=cluster_table.shape[0], term_width=80)
-            progress_bar.start()
+            pbar = tqdm(total=cluster_table.shape[0], ncols=80)
             for start_event, stop_event in event_range:  # loop over the selected events
                 readout_cluster_len = 0  # variable to calculate a optimal chunk size value from the number of hits for speed up
                 n_cluster_per_event = None
@@ -286,10 +285,10 @@ def get_rate_normalization(hit_file, parameter, reference='event', cluster_file=
                         n_cluster_per_event = np.append(n_cluster_per_event, analysis_utils.get_n_cluster_in_events(clusters['event_number'])[:, 1])
                     readout_cluster_len += clusters.shape[0]
                     total_cluster += clusters.shape[0]
-                    progress_bar.update(index)
+                    pbar.update(index - pbar.n)
                 best_chunk_size = int(1.5 * readout_cluster_len) if int(1.05 * readout_cluster_len) < chunk_size else chunk_size  # to increase the readout speed, estimated the number of hits for one read instruction
                 normalization_multiplicity.append(np.mean(n_cluster_per_event))
-            progress_bar.finish()
+            pbar.close()
             if total_cluster != cluster_table.shape[0]:
                 logging.warning('Analysis shows inconsistent number of cluster (%d != %d). Check needed!', total_cluster, cluster_table.shape[0])
 
@@ -312,15 +311,16 @@ def get_total_n_data_words(files_dict, precise=False):
     n_words = 0
     if precise:  # open all files and determine the total number of words precicely, can take some time
         if len(files_dict) > 10:
-            progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(files_dict), term_width=80)
-            progress_bar.start()
+            pbar = tqdm(total=len(files_dict), ncols=80)
+        else:
+            pbar = None
         for index, file_name in enumerate(files_dict.keys()):
             with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
                 n_words += in_file_h5.root.raw_data.shape[0]
-            if len(files_dict) > 10:
-                progress_bar.update(index)
-        if len(files_dict) > 10:
-            progress_bar.finish()
+            if pbar is not None:
+                pbar.update(index - pbar.n)
+        if pbar is not None:
+            pbar.close()
         return n_words
     else:  # open just first an last file and take the mean to estimate the total numbe rof words
         with tb.open_file(list(files_dict.keys())[0], mode="r") as in_file_h5:  # open the actual file
@@ -589,8 +589,7 @@ def combine_meta_data(files_dict, meta_data_v2=True):
     meta_data_v2 : bool
         True for new (v2) meta data format, False for the old (v1) format.
     """
-    if len(files_dict) > 10:
-        logging.info("Combine the meta data from %d files", len(files_dict))
+    logging.info("Combine the meta data from %d files" % len(files_dict))
     # determine total length needed for the new combined array, thats the fastest way to combine arrays
     total_length = 0  # the total length of the new table
     for file_name in files_dict.keys():
@@ -614,9 +613,9 @@ def combine_meta_data(files_dict, meta_data_v2=True):
             ('error', np.uint32)])
 
     if len(files_dict) > 10:
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=total_length, term_width=80)
-        progress_bar.start()
-
+        pbar = tqdm(total=total_length, ncols=80)
+    else:
+        pbar = None
     index = 0
 
     # fill actual result array
@@ -625,10 +624,10 @@ def combine_meta_data(files_dict, meta_data_v2=True):
             array_length = in_file_h5.root.meta_data.shape[0]
             meta_data_combined[index:index + array_length] = in_file_h5.root.meta_data[:]
             index += array_length
-            if len(files_dict) > 10:
-                progress_bar.update(index)
-    if len(files_dict) > 10:
-        progress_bar.finish()
+            if pbar is not None:
+                pbar.update(index - pbar.n)
+    if pbar is not None:
+        pbar.close()
     return meta_data_combined
 
 
@@ -1434,45 +1433,6 @@ def get_pixel_thresholds_from_calibration_array(gdacs, calibration_gdacs, thresh
         raise ValueError('Length of the provided pixel GDACs does not match the third dimension of the calibration array')
     interpolation = interp1d(x=calibration_gdacs, y=threshold_calibration_array, kind='slinear', bounds_error=bounds_error)
     return interpolation(gdacs)
-
-
-class ETA(progressbar.Timer):
-    '''Progressbar widget which estimate the time of arrival for the progress bar via exponential moving average.
-    '''
-    TIME_SENSITIVE = True
-
-    def __init__(self, smoothing=0.1):
-        self.speed_smooth = None
-        self.SMOOTHING = smoothing
-        self.old_eta = None
-        self.n_refresh = 0
-
-    def update(self, pbar):
-        'Updates the widget to show the ETA or total time when finished.'
-        self.n_refresh += 1
-        if pbar.currval == 0:
-            return 'ETA:  --:--:--'
-        elif pbar.finished:
-            return 'Time: %s' % self.format_time(pbar.seconds_elapsed)
-        else:
-            elapsed = pbar.seconds_elapsed
-            try:
-                speed = pbar.currval / elapsed
-                if self.speed_smooth is not None:
-                    self.speed_smooth = (self.speed_smooth * (1 - self.SMOOTHING)) + (speed * self.SMOOTHING)
-                else:
-                    self.speed_smooth = speed
-                eta = float(pbar.maxval) / self.speed_smooth - elapsed + 1 if float(pbar.maxval) / self.speed_smooth - elapsed + 1 > 0 else 0
-
-                if float(pbar.currval) / pbar.maxval > 0.30 or self.n_refresh > 10:  # ETA only rather precise if > 30% is already finished or more than 10 times updated
-                    return 'ETA:  %s' % self.format_time(eta)
-                if self.old_eta is not None and self.old_eta < eta:  # do not show jumping ETA if non precise mode is active
-                    return 'ETA: ~%s' % self.format_time(self.old_eta)
-                else:
-                    self.old_eta = eta
-                    return 'ETA: ~%s' % self.format_time(eta)
-            except ZeroDivisionError:
-                speed = 0
 
 
 def get_n_cluster_per_event_hist(cluster_table):

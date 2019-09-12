@@ -18,7 +18,7 @@ import numpy as np
 from scipy.optimize import curve_fit, OptimizeWarning
 from scipy.special import erf
 
-import progressbar
+from tqdm import tqdm
 
 from pixel_clusterizer.clusterizer import HitClusterizer
 
@@ -739,8 +739,7 @@ class AnalyzeRawData(object):
                 cluster_hit_table = self.out_file_h5.create_table(self.out_file_h5.root, name='ClusterHits', description=description, title='cluster_hit_data', filters=self._filter_table, expectedrows=self._chunk_size)
 
         logging.info("Interpreting raw data...")
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=analysis_utils.get_total_n_data_words(self.files_dict), term_width=80)
-        progress_bar.start()
+        pbar = tqdm(total=analysis_utils.get_total_n_data_words(self.files_dict), ncols=80)
         total_words = 0
 
         for file_index, raw_data_file in enumerate(self.files_dict.keys()):  # loop over all raw data files
@@ -920,10 +919,9 @@ class AnalyzeRawData(object):
                         size = self.interpreter.get_n_meta_data_word()
                         meta_word_index_table.append(meta_word[:size])
 
-                    if total_words <= progress_bar.maxval:  # Otherwise exception is thrown
-                        progress_bar.update(total_words)
+                    pbar.update(total_words - pbar.n)
                     self.out_file_h5.flush()
-        progress_bar.finish()
+        pbar.close()
         self._create_additional_data()
 
         if close_analyzed_data_file:
@@ -1179,9 +1177,7 @@ class AnalyzeRawData(object):
         n_hits = 0  # number of hits in actual chunk
 
         logging.info('Analyzing hits...')
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=table_size, term_width=80)
-        progress_bar.start()
-
+        pbar = tqdm(total=table_size, ncols=80)
         for hits, index in analysis_utils.data_aligned_at_events(in_file_h5.root.Hits, chunk_size=self._chunk_size):
             n_hits += hits.shape[0]
 
@@ -1206,8 +1202,8 @@ class AnalyzeRawData(object):
                         self._cluster_tot_hist.resize((self._cluster_tot_hist.shape[0], np.max(clusters['size']) + 1))
                     self._cluster_tot_hist += fast_analysis_utils.hist_2d_index(clusters['tot'], clusters['size'], shape=self._cluster_tot_hist.shape)
             self.out_file_h5.flush()
-            progress_bar.update(index)
-        progress_bar.finish()
+            pbar.update(index - pbar.n)
+        pbar.close()
 
         if table_size == 0:
             logging.warning('Found no hits')

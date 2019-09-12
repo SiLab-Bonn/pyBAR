@@ -9,7 +9,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import numpy as np
 import tables as tb
 
-import progressbar
+from tqdm import tqdm
 
 from pybar.fei4_run_base import Fei4RunBase
 from pybar.run_manager import RunManager
@@ -34,8 +34,7 @@ class IVScan(Fei4RunBase):
         description = [('voltage', np.float), ('current', np.float)]
         data = self.raw_data_file.h5_file.create_table(self.raw_data_file.h5_file.root, name='IV_data', description=np.zeros((1, ), dtype=description).dtype, title='Data from the IV scan')
 
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(self.voltages), term_width=80)
-        progress_bar.start()
+        pbar = tqdm(total=len(self.voltages), ncols=80)
         actual_voltage = None
         try:
             for index, voltage in enumerate(self.voltages):
@@ -72,20 +71,19 @@ class IVScan(Fei4RunBase):
                 else:
                     a = np.array([(voltage, current)], dtype=description)
                     data.append(a)
-                progress_bar.update(index)
-            progress_bar.finish()
+                pbar.update(index - pbar.n)
+            pbar.close()
             data.flush()
         finally:
             # ramp down
             if self.bias_voltage and self.bias_voltage <= 0 and actual_voltage is not None:
                 logging.info('Set bias voltage from %f V to %f V', actual_voltage, self.bias_voltage)
-                progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(range(actual_voltage, self.bias_voltage + 1, 2)), term_width=80)
-                progress_bar.start()
+                pbar = tqdm(total=len(range(actual_voltage, self.bias_voltage + 1, 2)), ncols=80)
                 for index, voltage in enumerate(range(actual_voltage, self.bias_voltage + 1, 2)):  # ramp until bias
                     time.sleep(self.minimum_delay)
                     self.dut['Sourcemeter'].set_voltage(voltage)
-                    progress_bar.update(index)
-                progress_bar.finish()
+                    pbar.update(index - pbar.n)
+                pbar.close()
 
     def analyze(self):
         logging.info('Analyze and plot results')

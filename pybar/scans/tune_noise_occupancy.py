@@ -6,7 +6,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import numpy as np
 from scipy import stats
 
-import progressbar
+from tqdm import tqdm
 
 from pybar.analysis.analyze_raw_data import AnalyzeRawData
 from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row, invert_pixel_mask
@@ -92,16 +92,16 @@ class NoiseOccupancyTuning(Fei4RunBase):
             while not self.stop_run.wait(1.0):
                 if self.register_utils.is_ready:
                     if got_data:
-                        self.progressbar.finish()
+                        self.pbar.close()
                     self.stop('Finished sending %d triggers' % self.n_triggers)
                 if not got_data:
                     if self.data_words_per_second() > 0:
                         got_data = True
                         logging.info('Taking data...')
-                        self.progressbar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.Timer()], maxval=self.total_scan_time, poll=10, term_width=80).start()
+                        self.pbar = tqdm(total=self.total_scan_time, ncols=80)
                 else:
                     try:
-                        self.progressbar.update(time() - start)
+                        self.pbar.update(time() - start - self.pbar.n)
                     except ValueError:
                         pass
 

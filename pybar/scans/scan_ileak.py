@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import tables as tb
 
-import progressbar
+from tqdm import tqdm
 
 from pybar.fei4.register_utils import make_box_pixel_mask_from_col_row
 from pybar.fei4_run_base import Fei4RunBase
@@ -30,9 +30,7 @@ class IleakScan(Fei4RunBase):
 
     def scan(self):
         logging.info("Scanning %d pixels" % len(self.pixels))
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(self.pixels), term_width=80)
-        progress_bar.start()
-
+        pbar = tqdm(total=len(self.pixels), ncols=80)
         data_out = self.raw_data_file.h5_file.create_carray(self.raw_data_file.h5_file.root, name='Ileak_map', title='Leakage current per pixel in arbitrary units', atom=tb.Atom.from_dtype(self.ileakmap.dtype), shape=self.ileakmap.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
 
         for pixel_index, (column, row) in enumerate(self.pixels):
@@ -51,9 +49,9 @@ class IleakScan(Fei4RunBase):
             voltage = float(voltage_string.split(',')[0][:-4])
             self.ileakmap[column - 1, row - 1] = voltage
 
-            progress_bar.update(pixel_index)
+            pbar.update(pixel_index - pbar.n)
 
-        progress_bar.finish()
+        pbar.close()
 
         data_out[:] = self.ileakmap
 

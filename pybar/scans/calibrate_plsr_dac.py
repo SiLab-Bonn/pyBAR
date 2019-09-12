@@ -17,7 +17,7 @@ from scipy import interpolate
 from scipy import optimize
 # from pylab import polyfit, poly1d
 
-import progressbar
+from tqdm import tqdm
 
 from pybar.analysis.analysis_utils import consecutive
 from pybar.fei4_run_base import Fei4RunBase
@@ -55,9 +55,8 @@ class PlsrDacCalibration(Fei4RunBase):
         description = np.dtype([('colpr_addr', np.uint32), ('PlsrDAC', np.int32), ('voltage', np.float)])  # output data table description, native NumPy dtype
         data = self.raw_data_file.h5_file.create_table(self.raw_data_file.h5_file.root, name='plsr_dac_data', description=description, title='Data from PlsrDAC calibration scan')
 
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(self.pulser_dac_parameters) * len(self.colpr_addr_parameters) * self.repeat_measurements, term_width=80)
-        progress_bar.start()
-        progress_bar_index = 0
+        pbar = tqdm(total=len(self.pulser_dac_parameters) * len(self.colpr_addr_parameters) * self.repeat_measurements, ncols=80)
+        index = 0
 
         for colpr_address in self.colpr_addr_parameters:
             if self.abort_run.is_set():
@@ -86,17 +85,17 @@ class PlsrDacCalibration(Fei4RunBase):
                 actual_data['colpr_addr'] = colpr_address
                 actual_data["PlsrDAC"] = pulser_dac
 
-                for index, pulser_dac in enumerate(range(self.repeat_measurements)):
+                for meas_index in range(self.repeat_measurements):
                     voltage_string = self.dut['Multimeter'].get_voltage()
                     voltage = float(voltage_string.split(',')[0])
 
-                    actual_data['voltage'][index] = voltage
+                    actual_data['voltage'][meas_index] = voltage
 #                     logging.info('Measured %.2fV', voltage)
-                    progress_bar_index += 1
-                    progress_bar.update(progress_bar_index)
+                    index += 1
+                    pbar.update(index)
                 # append data to HDF5 file
                 data.append(actual_data)
-        progress_bar.finish()
+        pbar.close()
         data.flush()
 
     def analyze(self):

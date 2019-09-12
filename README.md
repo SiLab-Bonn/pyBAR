@@ -44,7 +44,7 @@ Python 2.7 or Python 3.7 or higher must be used (other Python versions are not g
 
 The following packages are required for pyBAR's core functionality:
   ```
-  basil_daq bitarray contextlib2 cython matplotlib numba numpy pixel_clusterizer progressbar-latest pytables pyyaml scipy
+  basil_daq bitarray contextlib2 cython matplotlib numba numpy pixel_clusterizer pytables pyyaml scipy tqdm
   ```
 
 For full functionality, the following additional packages are required:
@@ -56,7 +56,7 @@ Run the **following commands** to install the packages:
   ```
   conda install python=2.7 bitarray contextlib2 cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
 
-  pip install progressbar-latest pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0
+  pip install pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0 tqdm
   ```
 
 [Basil](https://github.com/SiLab-Bonn/basil) (>=2.4.12,<4.0.0) is required:

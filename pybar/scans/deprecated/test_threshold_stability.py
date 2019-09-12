@@ -11,7 +11,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import tables as tb
 import numpy as np
 
-import progressbar
+from tqdm import tqdm
 
 from pybar.scans.scan_threshold_fast import FastThresholdScan
 from analysis import analysis_utils
@@ -40,13 +40,12 @@ def select_trigger_hits(input_file_hits, output_file_hits_1, output_file_hits_2)
                 with tb.open_file(output_file_hits_2, mode="w") as out_hit_file_2_h5:
                     hit_table_out_1 = out_hit_file_1_h5.create_table(out_hit_file_1_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
                     hit_table_out_2 = out_hit_file_2_h5.create_table(out_hit_file_2_h5.root, name='Hits', description=data_struct.HitInfoTable, title='hit_data', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-                    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=hit_table_in.shape[0], term_width=80)
-                    progress_bar.start()
+                    pbar = tqdm(total=hit_table_in.shape[0], ncols=80)
                     for data, index in analysis_utils.data_aligned_at_events(hit_table_in, chunk_size=5000000):
                         hit_table_out_1.append(data[data['LVL1ID'] % 2 == 1])  # first trigger hits
                         hit_table_out_2.append(data[data['LVL1ID'] % 2 == 0])  # second trigger hits
-                        progress_bar.update(index)
-                    progress_bar.finish()
+                        pbar.update(index - pbar.n)
+                    pbar.close()
                     in_hit_file_h5.root.meta_data.copy(out_hit_file_1_h5.root)  # copy meta_data note to new file
                     in_hit_file_h5.root.meta_data.copy(out_hit_file_2_h5.root)  # copy meta_data note to new file
 
@@ -162,9 +161,7 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
     mean_threshold_calibration_2 = np.zeros_like(mean_threshold_calibration)  # array to hold the analyzed data in ram
     mean_threshold_rms_calibration_2 = np.zeros_like(mean_threshold_calibration)  # array to hold the analyzed data in ram
     threshold_calibration_2 = np.zeros_like(threshold_calibration)  # array to hold the analyzed data in ram
-    # initialize progress bar
-    progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=len(local_configuration['delays']), term_width=80)
-    progress_bar.start()
+    pbar = tqdm(total=len(local_configuration['delays']), ncols=80)
     # loop over all delay values and analyze the corresponding data
     for delay_index, delay_value in enumerate(local_configuration['delays']):
         # interpret the raw data from the actual delay value
@@ -234,8 +231,8 @@ def analyze_data(scan_data_filenames, ignore_columns, fei4b=False):
                     mean_threshold_calibration_2[delay_index] = np.ma.mean(thresholds_masked_2)
                     mean_threshold_rms_calibration_2[delay_index] = np.ma.std(thresholds_masked_2)
                     threshold_calibration_2[:, :, delay_index] = thresholds_masked_2.T
-        progress_bar.update(delay_index)
-    progress_bar.finish()
+        pbar.update(delay_index - pbar.n)
+    pbar.close()
 
     # plot the parameter against delay plots
     if local_configuration['create_result_plots']:

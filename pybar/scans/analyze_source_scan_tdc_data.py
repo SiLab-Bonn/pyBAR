@@ -22,7 +22,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.ndimage.interpolation import shift
 
-import progressbar
+from tqdm import tqdm
 
 from pybar_fei4_interpreter import analysis_utils as fast_analysis_utils
 from pybar.analysis import analysis_utils
@@ -237,8 +237,7 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
         n_hits_per_condition = [0 for _ in range(len(hit_selection_conditions) + 2)]  # condition 1, 2 are all hits, hits of goode events
 
         logging.info('Select hits and create TDC histograms for %d cut conditions', len(hit_selection_conditions))
-        progress_bar = progressbar.ProgressBar(widgets=['', progressbar.Percentage(), ' ', progressbar.Bar(marker='*', left='|', right='|'), ' ', progressbar.AdaptiveETA()], maxval=cluster_hit_table.shape[0], term_width=80)
-        progress_bar.start()
+        pbar = tqdm(total=cluster_hit_table.shape[0], ncols=80)
         for cluster_hits, _ in analysis_utils.data_aligned_at_events(cluster_hit_table, chunk_size=10000000):
             n_hits_per_condition[0] += cluster_hits.shape[0]
             selected_events_cluster_hits = cluster_hits[np.logical_and(cluster_hits['TDC'] < max_tdc, (cluster_hits['event_status'] & event_status_select_mask) == event_status_condition)]
@@ -257,8 +256,8 @@ def histogram_tdc_hits(input_file_hits, hit_selection_conditions, event_status_s
                 mean_pixel_tdc_timestamp_hists_per_condition[index] = np.average(pixel_tdc_timestamp_hists_per_condition[index], axis=2, weights=range(0, 256)) * np.sum(np.arange(0, 256)) / pixel_tdc_timestamp_hists_per_condition[index].sum(axis=2)
                 tdc_hists_per_condition[index] = pixel_tdc_hists_per_condition[index].sum(axis=(0, 1), dtype=np.uint32)  # fix dtype, sum will otherwise increase precision
                 tdc_corr_hists_per_condition[index] += fast_analysis_utils.hist_2d_index(tdc, selected_cluster_hits['tot'], shape=(max_tdc, 16))
-            progress_bar.update(n_hits_per_condition[0])
-        progress_bar.finish()
+            pbar.update(n_hits_per_condition[0] - pbar.n)
+        pbar.close()
 
         # Take TDC calibration if available and calculate charge for each TDC value and pixel
         if calibration_file is not None:
