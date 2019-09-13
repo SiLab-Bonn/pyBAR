@@ -7,6 +7,10 @@
 
 PWD=$(shell pwd)
 
+SIM?=icarus
+export SIM
+COCOTB_SIM?=1
+export COCOTB_SIM
 #SIMULATION_HOST?=localhost
 #SIMULATION_PORT?=12345
 SIMULATION_BUS?=basil.utils.sim.SiLibUsbBusDriver
@@ -28,10 +32,10 @@ export PYTHONHOME=$(shell python -c "from distutils.sysconfig import get_config_
 # i.e. export XILINX=~/Xilinx/14.7/ISE_DS
 XILINX_SRC?=$(XILINX)
 
-BASIL?=$(shell python -c "import basil;import os;print os.path.dirname(basil.__file__)")
-BASIL_MODULES?=$(BASIL)/../firmware/modules
+BASIL?=$(shell python -c "import basil;import os;print(os.path.dirname(basil.__file__))")
+BASIL_MODULES?=$(BASIL)/firmware/modules
 FEI4_SOURCES?=$(BASIL)/../../fei4/trunk/models/fei4a
-PYBAR?=$(shell python -c "import pybar;import os;print os.path.dirname(pybar.__file__)")
+PYBAR?=$(shell python -c "import pybar;import os;print(os.path.dirname(pybar.__file__))")
 PYBAR_SOURCES?=$(PYBAR)/../firmware/mio
 
 VERILOG_SOURCES = \
@@ -90,8 +94,8 @@ COMPILE_ARGS = -g2012 -DTEST_DC=1 -I$(BASIL_MODULES) -I$(BASIL_MODULES)/tb -I../
 TOPLEVEL = tb
 MODULE   = basil.utils.sim.Test
 
-include $(COCOTB)/makefiles/Makefile.inc
-include $(COCOTB)/makefiles/Makefile.sim
+include $(shell cocotb-config --makefiles)/Makefile.inc
+include $(shell cocotb-config --makefiles)/Makefile.sim
 
 sim_only: $(CUSTOM_SIM_DEPS) $(COCOTB_LIBS) $(COCOTB_VPI_LIB) $(CUSTOM_COMPILE_DEPS)
 	PYTHONPATH=$(LIB_DIR):$(SIM_ROOT):$(PWD):$(NEW_PYTHONPATH) $(LIB_LOAD) MODULE=$(MODULE) \
