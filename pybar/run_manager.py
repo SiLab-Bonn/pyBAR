@@ -20,6 +20,11 @@ try:
     basestring  # noqa
 except NameError:
     basestring = str  # noqa
+try:
+    file  # noqa
+except NameError:
+    from io import TextIOWrapper  # noqa
+    file = TextIOWrapper  # noqa
 
 from yaml import safe_load
 
