@@ -37,6 +37,7 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
         analyze_raw_data.create_occupancy_hist = False  # too many scan parameters to do in ram histogramming
         analyze_raw_data.create_hit_table = True
         analyze_raw_data.create_tdc_hist = True
+        analyze_raw_data.tdc_trigger_time_stamp = True
         analyze_raw_data.align_at_tdc = True  # align events at TDC words, first word of event has to be a tdc word
         analyze_raw_data.interpret_word_table()
         analyze_raw_data.interpreter.print_summary()
@@ -85,8 +86,8 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                     logging.warning('%d hit(s) from other pixels for scan parameters %s', n_wrong_pixel, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, actual_scan_parameter_values)]))
 
                 actual_hits = actual_hits[np.logical_and(actual_hits['column'] == actual_col, actual_hits['row'] == actual_row)]  # Only take data from selected pixel
-                actual_tdc_hits = actual_hits[(actual_hits['event_status'] & 0b0000111110011100) == 0b0000000100000000]  # only take hits from good events (one TDC word only, no error)
-                actual_tot_hits = actual_hits[(actual_hits['event_status'] & 0b0000100010011100) == 0b0000000000000000]  # only take hits from good events for tot
+                actual_tdc_hits = actual_hits[(actual_hits['event_status'] & 0b0110111110011100) == 0b0000000100000000]  # only take hits from good events (one TDC word only, no error)
+                actual_tot_hits = actual_hits[(actual_hits['event_status'] & 0b0000000010011100) == 0b0000000000000000]  # only take hits from good events for tot
                 tot, tdc = actual_tot_hits['tot'], actual_tdc_hits['TDC']
 
                 if n_injections is not None:

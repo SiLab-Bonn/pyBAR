@@ -22,8 +22,8 @@ def analyze_raw_data(input_file, output_file_hits):
         analyze_raw_data.create_tot_hist = True  # creates a ToT histogram
         analyze_raw_data.create_rel_bcid_hist = True  # creates a histogram with the relative BCID of the hits
         analyze_raw_data.create_service_record_hist = True  # creates a histogram with all SR send out from the FE
-        analyze_raw_data.create_error_hist = True  # creates a histogram summing up the event errors that occurred
-        analyze_raw_data.create_trigger_error_hist = True  # creates a histogram summing up the trigger errors
+        analyze_raw_data.create_trigger_status_hist = True  # creates a histogram with occurring trigger status bits
+        analyze_raw_data.create_event_status_hist = True  # creates a histogram with occurring event status bits
         analyze_raw_data.create_source_scan_hist = False  # create source scan hists
         analyze_raw_data.create_cluster_size_hist = False  # enables cluster size histogramming, can save some time, std. setting is false
         analyze_raw_data.create_cluster_tot_hist = False  # enables cluster ToT histogramming per cluster size, std. setting is false

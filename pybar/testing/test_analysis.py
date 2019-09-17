@@ -36,7 +36,8 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
             analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
             analyze_raw_data.create_cluster_table = True  # enables the creation of a table with all clusters, std. setting is false
-            analyze_raw_data.create_trigger_error_hist = True  # creates a histogram summing up the trigger errors
+            analyze_raw_data.create_trigger_status_hist = True  # creates a histogram with occurring trigger status bits
+            analyze_raw_data.create_event_status_hist = True  # creates a histogram with occurring event status bits
             analyze_raw_data.create_cluster_size_hist = True  # enables cluster size histogramming, can save some time, std. setting is false
             analyze_raw_data.create_cluster_tot_hist = True  # enables cluster ToT histogramming per cluster size, std. setting is false
             analyze_raw_data.create_meta_word_index = True  # stores the start and stop raw data word index for every event, std. setting is false
@@ -59,7 +60,8 @@ class TestAnalysis(unittest.TestCase):
             analyze_raw_data.create_hit_table = True  # can be set to false to omit hit table creation, std. setting is false
             analyze_raw_data.create_cluster_hit_table = True  # adds the cluster id and seed info to each hit, std. setting is false
             analyze_raw_data.create_cluster_table = True  # enables the creation of a table with all clusters, std. setting is false
-            analyze_raw_data.create_trigger_error_hist = True  # creates a histogram summing up the trigger errors
+            analyze_raw_data.create_trigger_status_hist = True  # creates a histogram with occurring trigger status bits
+            analyze_raw_data.create_event_status_hist = True  # creates a histogram with occurring event status bits
             analyze_raw_data.create_cluster_size_hist = True  # enables cluster size histogramming, can save some time, std. setting is false
             analyze_raw_data.create_cluster_tot_hist = True  # enables cluster ToT histogramming per cluster size, std. setting is false
             analyze_raw_data.create_meta_word_index = True  # stores the start and stop raw data word index for every event, std. setting is false
@@ -139,12 +141,13 @@ class TestAnalysis(unittest.TestCase):
                                      ('tot', np.uint8),
                                      ('BCID', np.uint16),
                                      ('TDC', np.uint16),
-                                     ('TDC_time_stamp', np.uint8),
+                                     ('TDC_time_stamp', np.uint16),
+                                     ('TDC_trigger_distance', np.uint8),
                                      ('trigger_status', np.uint8),
                                      ('service_record', np.uint32),
                                      ('event_status', np.uint16)
                                      ])
-        self.assertTrue(self.interpreter.get_hit_size() == hits.itemsize)
+        self.assertEqual(self.interpreter.get_hit_size(), hits.itemsize)
 
     def test_raw_data_analysis(self):  # test the created interpretation file against the stored one
         data_equal, error_msg = test_tools.compare_h5_files(os.path.join(tests_data_folder, 'unit_test_data_1_result.h5'),
@@ -641,9 +644,9 @@ class TestAnalysis(unittest.TestCase):
                 analyze_raw_data.use_tdc_word = False
                 analyze_raw_data.create_hit_table = True
                 analyze_raw_data.create_meta_event_index = True
-                analyze_raw_data.create_trigger_error_hist = True
+                analyze_raw_data.create_trigger_status_hist = True
+                analyze_raw_data.create_event_status_hist = True
                 analyze_raw_data.create_rel_bcid_hist = True
-                analyze_raw_data.create_error_hist = True
                 analyze_raw_data.create_service_record_hist = True
                 analyze_raw_data.create_occupancy_hist = True
                 analyze_raw_data.create_tot_hist = False
