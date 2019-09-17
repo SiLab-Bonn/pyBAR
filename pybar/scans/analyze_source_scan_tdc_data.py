@@ -67,6 +67,7 @@ def analyze_raw_data(input_files, output_file_hits, interpreter_plots, overwrite
             analyze_raw_data.align_at_tdc = align_at_tdc  # align events at TDC words, first word of event has to be a tdc word
             analyze_raw_data.create_tdc_hist = True  # histogram TDC data
             analyze_raw_data.create_tdc_pixel_hist = True
+            analyze_raw_data.tdc_trigger_time_stamp = True
             analyze_raw_data.create_tot_pixel_hist = True
             analyze_raw_data.create_cluster_hit_table = True  # enables the creation of a table with all cluster hits, std. setting is false
             analyze_raw_data.create_source_scan_hist = True  # create source scan hists

@@ -291,7 +291,8 @@ class AnalyzeRawData(object):
         self.create_tot_pixel_hist = True
         self.create_rel_bcid_hist = True
         self.correct_corrupted_data = False
-        self.create_error_hist = True
+        self.create_trigger_status_hist = True
+        self.create_event_status_hist = True
         self.create_service_record_hist = True
         self.create_occupancy_hist = True
         self.create_meta_word_index = False
@@ -301,7 +302,6 @@ class AnalyzeRawData(object):
         self.tdc_trigger_time_stamp = False  # TDC word has trigger timestamp field (8-bit or 16-bit value)
         self.tdc_trigger_distance = False  # TDC word has trigger distance field (8-bit value)
         self.max_tdc_delay = 255  # works only if tdc_trigger_distance is set to True; any TDC word is ignored, if trigger distance is above value
-        self.create_trigger_error_hist = False
         self.create_threshold_hists = False
         self.create_threshold_mask = True  # Threshold/noise histogram mask: masking all pixels out of bounds
         self.create_fitted_threshold_mask = True  # Fitted threshold/noise histogram mask: masking all pixels out of bounds
@@ -495,20 +495,20 @@ class AnalyzeRawData(object):
         self._correct_corrupted_data = value
 
     @property
-    def create_error_hist(self):
-        return self._create_error_hist
+    def create_trigger_status_hist(self):
+        return self._create_trigger_status_hist
 
-    @create_error_hist.setter
-    def create_error_hist(self, value):
-        self._create_error_hist = value
+    @create_trigger_status_hist.setter
+    def create_trigger_status_hist(self, value):
+        self._create_trigger_status_hist = value
 
     @property
-    def create_trigger_error_hist(self):
-        return self._create_trigger_error_hist
+    def create_event_status_hist(self):
+        return self._create_event_status_hist
 
-    @create_trigger_error_hist.setter
-    def create_trigger_error_hist(self, value):
-        self._create_trigger_error_hist = value
+    @create_event_status_hist.setter
+    def create_event_status_hist(self, value):
+        self._create_event_status_hist = value
 
     @property
     def create_service_record_hist(self):
@@ -981,16 +981,16 @@ class AnalyzeRawData(object):
                 if self._analyzed_data_file is not None:
                     raw_data_tdc_trigger_distance_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistRawDataTdcTriggerDistance', title='Raw data TDC trigger distance histogram', atom=tb.Atom.from_dtype(self.raw_data_tdc_trigger_distance_hist.dtype), shape=self.raw_data_tdc_trigger_distance_hist.shape, filters=self._filter_table)
                     raw_data_tdc_trigger_distance_hist_out[:] = self.raw_data_tdc_trigger_distance_hist
-        if self._create_error_hist:
-            self.error_counter_hist = self.interpreter.get_event_status_counters()
+        if self._create_event_status_hist:
+            self.event_status_hist = self.interpreter.get_event_status_counters()
             if self._analyzed_data_file is not None:
-                error_counter_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistEventStatusCounter', title='Event status counter histogram', atom=tb.Atom.from_dtype(self.error_counter_hist.dtype), shape=self.error_counter_hist.shape, filters=self._filter_table)
-                error_counter_hist_out[:] = self.error_counter_hist
-        if self._create_trigger_error_hist:
-            self.trigger_error_counter_hist = self.interpreter.get_trigger_status_counters()
+                error_counter_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistEventStatusCounter', title='Event status counter histogram', atom=tb.Atom.from_dtype(self.event_status_hist.dtype), shape=self.event_status_hist.shape, filters=self._filter_table)
+                error_counter_hist_out[:] = self.event_status_hist
+        if self._create_trigger_status_hist:
+            self.trigger_status_hist = self.interpreter.get_trigger_status_counters()
             if self._analyzed_data_file is not None:
-                trigger_error_counter_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTriggerStatusCounter', title='Trigger status counter histogram', atom=tb.Atom.from_dtype(self.trigger_error_counter_hist.dtype), shape=self.trigger_error_counter_hist.shape, filters=self._filter_table)
-                trigger_error_counter_hist_out[:] = self.trigger_error_counter_hist
+                trigger_status_hist_out = self.out_file_h5.create_carray(self.out_file_h5.root, name='HistTriggerStatusCounter', title='Trigger status counter histogram', atom=tb.Atom.from_dtype(self.trigger_status_hist.dtype), shape=self.trigger_status_hist.shape, filters=self._filter_table)
+                trigger_status_hist_out[:] = self.trigger_status_hist
 
         self._create_additional_hit_data()
         self._create_additional_cluster_data()
@@ -1364,12 +1364,12 @@ class AnalyzeRawData(object):
             mean_pixel_tdc = np.average(tdc_pixel_hist, axis=2, weights=range(1024)) * sum(range(0, 1024)) / total_hits_masked
             plotting.plot_three_way(mean_pixel_tdc, title='Mean TDC', x_axis_title='mean TDC', maximum=2 * np.ma.median(np.ma.masked_invalid(mean_pixel_tdc)), filename=output_pdf)
         if not create_hit_hists_only:
-            if analyzed_data_file is None and self._create_error_hist:
-                plotting.plot_event_status(hist=out_file_h5.root.HistEventStatusCounter[:] if out_file_h5 is not None else self.error_counter_hist, filename=output_pdf)
+            if analyzed_data_file is None and self._create_event_status_hist:
+                plotting.plot_event_status(hist=out_file_h5.root.HistEventStatusCounter[:] if out_file_h5 is not None else self.event_status_hist, filename=output_pdf)
             if analyzed_data_file is None and self._create_service_record_hist:
                 plotting.plot_service_records(hist=out_file_h5.root.HistServiceRecord[:] if out_file_h5 is not None else self.service_record_hist, filename=output_pdf)
-            if analyzed_data_file is None and self._create_trigger_error_hist:
-                plotting.plot_trigger_errors(hist=out_file_h5.root.HistTriggerStatusCounter[:] if out_file_h5 is not None else self.trigger_error_counter_hist, filename=output_pdf)
+            if analyzed_data_file is None and self._create_trigger_status_hist:
+                plotting.plot_trigger_errors(hist=out_file_h5.root.HistTriggerStatusCounter[:] if out_file_h5 is not None else self.trigger_status_hist, filename=output_pdf)
 
         if close_analyzed_data_file:
             out_file_h5.close()
@@ -1404,7 +1404,7 @@ class AnalyzeRawData(object):
         return False
 
     def is_histogram_hits(self):  # returns true if a setting needs to have the hit histogramming active
-        if self._create_occupancy_hist or self._create_tot_hist or self._create_rel_bcid_hist or self._create_hit_table or self._create_threshold_hists or self._create_fitted_threshold_hists:
+        if self._create_occupancy_hist or self._create_mean_tot_hist or self._create_tot_hist or self._create_tdc_hist or self._create_tdc_pixel_hist or self._create_tot_pixel_hist or self._create_rel_bcid_hist or self._create_hit_table or self._create_threshold_hists or self._create_fitted_threshold_hists:
             return True
         return False
 
