@@ -89,10 +89,13 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                 actual_tot_hits = actual_hits[(actual_hits['event_status'] & 0b0000100010011100) == 0b0000000000000000]  # only take hits from good events for tot
                 tot, tdc = actual_tot_hits['tot'], actual_tdc_hits['TDC']
 
-                if tdc.shape[0] < n_injections:
-                    logging.info('%d of %d expected TDC hits for scan parameters %s', tdc.shape[0], n_injections, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, actual_scan_parameter_values)]))
-                if tot.shape[0] < n_injections:
-                    logging.info('%d of %d expected hits for scan parameters %s', tot.shape[0], n_injections, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, actual_scan_parameter_values)]))
+                if n_injections is not None:
+                    if tdc.shape[0] < n_injections:
+                        logging.info('%d of %d expected TDC hits for scan parameters %s', tdc.shape[0], n_injections, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, actual_scan_parameter_values)]))
+                    if tot.shape[0] < n_injections:
+                        logging.info('%d of %d expected hits for scan parameters %s', tot.shape[0], n_injections, ', '.join(['%s=%s' % (name, value) for (name, value) in zip(scan_parameter_names, actual_scan_parameter_values)]))
+                else:
+                    logging.warning("Parameter n_injections not set properly.")
 
                 inner_loop_scan_parameter_index = np.where(plser_dac == inner_loop_parameter_values)[0][0]  # translate the scan parameter value to an index for the result histogram
                 # numpy mean and std return nan if array is empty
