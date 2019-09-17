@@ -715,10 +715,8 @@ class AnalyzeRawData(object):
         else:
             out_file_h5 = None
 
-        tmp_out_file_h5 = self.out_file_h5
         if not self.is_open(self.out_file_h5) and self.is_open(out_file_h5):
             close_analyzed_data_file = False
-            tmp_out_file_h5 = out_file_h5
         self.out_file_h5 = out_file_h5
         if self.is_open(self.out_file_h5):
             self._analyzed_data_file = self.out_file_h5.filename
