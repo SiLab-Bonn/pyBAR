@@ -265,13 +265,13 @@ def compare_h5_files(first_file, second_file, node_names=None, detailed_comparis
                         if not nan_equal(first_array=first_file_data, second_array=second_file_data):
                             checks_passed = False
                             if detailed_comparison:
-                                error_msg += ('Node %s:\n' % node_name) + get_array_differences(first_array=first_file_data, second_array=second_file_data, exact=True)
+                                error_msg += ('\nNode %s:\n' % node_name) + get_array_differences(first_array=first_file_data, second_array=second_file_data, exact=True)
                             break
                     else:
                         if not nan_close(first_array=first_file_data, second_array=second_file_data, rtol=rtol, atol=atol, equal_nan=True):
                             checks_passed = False
                             if detailed_comparison:
-                                error_msg += ('Node %s:\n' % node_name) + get_array_differences(first_array=first_file_data, second_array=second_file_data, exact=False, rtol=rtol, atol=atol, equal_nan=True)
+                                error_msg += ('\nNode %s:\n' % node_name) + get_array_differences(first_array=first_file_data, second_array=second_file_data, exact=False, rtol=rtol, atol=atol, equal_nan=True)
                             break
                     index_start += read_nrows
     if checks_passed:
