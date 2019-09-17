@@ -5,7 +5,7 @@ python:
 
 branches:
   only:
-    - v2.2.x
+    - v2.x
 
 notifications:
   email:
