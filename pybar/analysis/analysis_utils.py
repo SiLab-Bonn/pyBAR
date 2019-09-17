@@ -1482,26 +1482,6 @@ def get_n_cluster_per_event_hist(cluster_table):
     return np.histogram(cluster_in_events, bins=range(0, np.max(cluster_in_events) + 2))  # histogram the occurrence of n cluster per event
 
 
-def get_data_statistics(interpreted_files):
-    '''Quick and dirty function to give as redmine compatible iverview table
-    '''
-    print('| *File Name* | *File Size* | *Times Stamp* | *Events* | *Bad Events* | *Measurement time* | *# SR* | *Hits* |')  # Mean ToT | Mean rel. BCID'
-    for interpreted_file in interpreted_files:
-        with tb.open_file(interpreted_file, mode="r") as in_file_h5:  # open the actual hit file
-            n_hits = np.sum(in_file_h5.root.HistOcc[:])
-            measurement_time = int(in_file_h5.root.meta_data[-1]['timestamp_stop'] - in_file_h5.root.meta_data[0]['timestamp_start'])
-#             mean_tot = np.average(in_file_h5.root.HistTot[:], weights=range(0,16) * np.sum(range(0,16)))# / in_file_h5.root.HistTot[:].shape[0]
-#             mean_bcid = np.average(in_file_h5.root.HistRelBcid[:], weights=range(0,16))
-            n_sr = np.sum(in_file_h5.root.HistServiceRecord[:])
-            n_bad_events = int(np.sum(in_file_h5.root.HistEventStatusCounter[2:]))
-            try:
-                n_events = str(in_file_h5.root.Hits[-1]['event_number'] + 1)
-            except tb.NoSuchNodeError:
-                n_events = '~' + str(in_file_h5.root.meta_data[-1]['event_number'] + (in_file_h5.root.meta_data[-1]['event_number'] - in_file_h5.root.meta_data[-2]['event_number']))
-            else:
-                print('| {} | {}Mb | {} | {} | {} | {}s | {} | {} |'.format(os.path.basename(interpreted_file), int(os.path.getsize(interpreted_file) / (1024.0 * 1024.0)), time.ctime(os.path.getctime(interpreted_file)), n_events, n_bad_events, measurement_time, n_sr, n_hits))  # , mean_tot, mean_bcid, '|'
-
-
 def fix_raw_data(raw_data, lsb_byte=None):
     if not lsb_byte:
         lsb_byte = np.right_shift(raw_data[0], 24)
