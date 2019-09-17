@@ -8,7 +8,6 @@ import os
 import time
 import glob
 import collections
-from operator import itemgetter
 try:
     basestring  # noqa
 except NameError:
@@ -17,6 +16,12 @@ try:
     reduce  # noqa
 except NameError:
     from functools import reduce
+from functools import cmp_to_key
+try:
+    cmp  # noqa
+except NameError:
+    def cmp(a, b):
+        return (a > b) - (a < b)
 
 from tqdm import tqdm
 import numpy as np
@@ -53,6 +58,27 @@ class NotSupportedError(AnalysisError):
 
     """Exception raised for not supported actions.
     """
+
+
+# the following lines replaces PEP 265 solution of sorting a dict by value
+def smallest_diff_key(A, B):
+    """return the smallest key adiff in A such that adiff not in B or A[adiff] != B[bdiff]"""
+    diff_keys = [k for k in A if k not in B or A[k] != B[k]]
+    return min(diff_keys)
+
+
+def dict_cmp(A, B):
+    if len(A) != len(B):
+        return cmp(len(A), len(B))
+    try:
+        adiff = smallest_diff_key(A, B)
+    except ValueError:
+        # No difference.
+        return 0
+    bdiff = smallest_diff_key(B, A)
+    if adiff != bdiff:
+        return cmp(adiff, bdiff)
+    return cmp(A[adiff], B[bdiff])
 
 
 def generate_threshold_mask(hist):
@@ -383,15 +409,14 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
     Returns
     -------
     collections.OrderedDict
-
     """
-#     unique=False
-    logging.debug('Get the parameter: ' + str(parameters) + ' values from the file names of ' + str(len(files)) + ' files')
+    if parameters:
+        logging.debug('Get parameter values from {} parameters from {} files'.format(len(parameters), len(files)))
     files_dict = collections.OrderedDict()
     if parameters is None:  # special case, no parameter defined
         return files_dict
     if isinstance(parameters, basestring):
-        parameters = (parameters, )
+        parameters = [parameters]
     search_string = '_'.join(parameters)
     for _ in parameters:
         search_string += r'_(-?\d+)'
@@ -409,7 +434,10 @@ def get_parameter_value_from_file_names(files, parameters=None, unique=False, so
                         result[key] = value
             else:
                 result[one_file] = files_dict[one_file]
-    return collections.OrderedDict(sorted(result.items(), key=itemgetter(1)) if sort else files_dict)  # with PEP 265 solution of sorting a dict by value
+    # the following lines replaces PEP 265 solution of sorting a dict by value
+    # and mimics Python 2.7 behavior
+    custom_sort = cmp_to_key(lambda x, y: dict_cmp(x[1], y[1]))
+    return collections.OrderedDict(sorted(result.items(), key=custom_sort) if sort else files_dict)
 
 
 def get_data_file_names_from_scan_base(scan_base, filter_str=['_analyzed.h5', '_interpreted.h5', '_cut.h5', '_result.h5', '_hists.h5'], sort_by_time=True, meta_data_v2=True):
@@ -502,14 +530,14 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
     Returns
     -------
     collections.OrderedDict
-
     '''
-    logging.debug('Get the parameter ' + str(parameters) + ' values from ' + str(len(files)) + ' files')
+    if parameters:
+        logging.debug('Get parameter values from {} parameters from {} files'.format(len(parameters), len(files)))
     files_dict = collections.OrderedDict()
     if isinstance(files, basestring):
-        files = (files, )
+        files = [files]
     if isinstance(parameters, basestring):
-        parameters = (parameters, )
+        parameters = [parameters]
     parameter_values_from_file_names_dict = get_parameter_value_from_file_names(files, parameters, unique=unique, sort=sort)  # get the parameter from the file name
     for file_name in files:
         with tb.open_file(file_name, mode="r") as in_file_h5:  # open the actual file
@@ -542,11 +570,11 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
                 try:
                     for key, value in scan_parameter_values.items():
                         if value and value[0] != parameter_values_from_file_names_dict[file_name][key][0]:  # parameter value exists: check if the first value is the file name value
-                            logging.warning('Parameter values in the file name and in the file differ. Take ' + str(key) + ' parameters ' + str(value) + ' found in %s.', file_name)
+                            logging.warning('Parameter values in the file name and in the file differ. Take {} parameters {} found in {}'.format(key, value, file_name))
                 except KeyError:  # parameter does not exists in the file name
                     pass
                 except IndexError:
-                    raise IncompleteInputError('Something wrong check!')
+                    raise IncompleteInputError('Cannot evaluate scan parameters')
             if unique and scan_parameter_values is not None:
                 existing = False
                 for parameter in scan_parameter_values:  # loop to determine if any value of any scan parameter exists already
@@ -557,10 +585,13 @@ def get_parameter_from_files(files, parameters=None, unique=False, sort=True):
                 if not existing:
                     files_dict[file_name] = scan_parameter_values
                 else:
-                    logging.warning('Scan parameter value(s) from %s exists already, do not add to result', file_name)
+                    logging.warning('Scan parameter value(s) from file %s exist already. Remove file from further processing.' % file_name)
             else:
                 files_dict[file_name] = scan_parameter_values
-    return collections.OrderedDict(sorted(files_dict.items(), key=itemgetter(1)) if sort else files_dict)
+    # the following lines replaces PEP 265 solution of sorting a dict by value
+    # and mimics Python 2.7 behavior
+    custom_sort = cmp_to_key(lambda x, y: dict_cmp(x[1], y[1]))
+    return collections.OrderedDict(sorted(files_dict.items(), key=custom_sort) if sort else files_dict)
 
 
 def check_parameter_similarity(files_dict):
