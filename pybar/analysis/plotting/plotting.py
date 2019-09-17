@@ -580,7 +580,8 @@ def plot_1d_hist(hist, yerr=None, title=None, x_axis_title=None, y_axis_title=No
         ax.bar(plot_range, hist[plot_range], color=color, align='center', yerr=yerr)
     else:
         ax.bar(plot_range, hist[plot_range], color=color, align='center')
-    ax.set_xlim((min(plot_range) - 0.5, max(plot_range) + 0.5))
+    if len(plot_range) > 0:
+        ax.set_xlim((min(plot_range) - 0.5, max(plot_range) + 0.5))
     ax.set_title(title)
     if x_axis_title is not None:
         ax.set_xlabel(x_axis_title)
