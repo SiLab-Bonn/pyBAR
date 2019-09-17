@@ -15,8 +15,8 @@ notifications:
 # Install additional dependencies required by pyBAR
 before_install:
   # Install cocotb and iverilog for interface test
-  - git clone https://github.com/potentialventures/cocotb
-  - export COCOTB=$(pwd)/cocotb
+#  - git clone https://github.com/potentialventures/cocotb
+#  - export COCOTB="$(pwd)/cocotb"
   # Build iverilog from source
   - sudo apt-get install gperf
   - git clone https://github.com/steveicarus/iverilog.git
@@ -32,14 +32,14 @@ before_install:
 # Install pyBAR and dependencies
 install:
   - wget http://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh
-  - bash miniconda.sh -b -p $HOME/miniconda
+  - bash miniconda.sh -b -p "$HOME/miniconda"
   - export PATH="$HOME/miniconda/bin:$PATH"
   - conda update --yes conda
-  - conda update --yes --all
   - conda info -a
-  - conda create --yes -n test-environment python=$TRAVIS_PYTHON_VERSION bitarray cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
+  - conda create --yes -n test-environment python="$TRAVIS_PYTHON_VERSION" bitarray cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
   - source activate test-environment
-  - pip install pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0 tqdm
+#  - cd "$COCOTB" && pip install -e . && cd -
+  - pip install pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0 tqdm cocotb
   - pip install pyusb
   - pip install pySiLibUSB
   - pip install "basil_daq>=2.4.12,<4.0.0"
@@ -47,10 +47,11 @@ install:
   - pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@development
   - pip install "pixel_clusterizer>=3.1,<3.2"
   # Install pyBAR
-  - python setup.py develop
+  - pip install -e .
+  - conda list
 
 # Unit tests
 script:
   # Remove file to make interface test working
-#  - rm -f $(HOME)/miniconda/envs/test-environment/lib/libreadline.so.6
-  - cd pybar/testing; nosetests test_analysis.py test_interface.py # --logging-level=INFO
+#  - rm -f "$(HOME)/miniconda/envs/test-environment/lib/libreadline.so.6"
+  - cd pybar/testing; nosetests --nocapture test_analysis.py test_interface.py # --logging-level=INFO

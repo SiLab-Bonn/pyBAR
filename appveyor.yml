@@ -17,7 +17,6 @@ install:
   # Miniconda setup + necessary external packages
   - set PATH=C:\Miniconda;C:\Miniconda\Scripts;%PATH%  # miniconda is already installed on appveyor: https://github.com/appveyor/ci/issues/359
   - conda update conda --yes
-  - conda update --all --yes
   - conda info -a
   - conda install --yes bitarray cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
   - pip install pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0 tqdm #git+https://github.com/uvemas/ViTables@develop
@@ -29,10 +28,9 @@ install:
   #- pip install git+https://github.com/SiLab-Bonn/basil@development
   - pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@development
   - pip install "pixel_clusterizer>=3.1,<3.2"
-  - python.exe setup.py develop
+  - pip install -e .
   - conda list
-  - pip list
 
 test_script:
   - cd pybar/testing
-  - nosetests test_analysis.py
+  - nosetests --nocapture test_analysis.py
