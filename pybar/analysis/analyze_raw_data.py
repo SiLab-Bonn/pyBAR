@@ -1418,7 +1418,7 @@ class AnalyzeRawData(object):
         '''
         try:
             flavor = opened_raw_data_file.root.configuration.miscellaneous[:][np.where(opened_raw_data_file.root.configuration.miscellaneous[:]['name'] == b'Flavor')[0]]['value'][0]
-            self.fei4b = False if str(flavor) == 'fei4a' else True
+            self.fei4b = False if flavor == b'fei4a' else True
         except (tb.exceptions.NoSuchNodeError, IndexError):
             logging.warning('FE flavor not stored in raw data file %s.' % opened_raw_data_file.filename)
 
