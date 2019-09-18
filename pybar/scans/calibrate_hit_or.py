@@ -105,7 +105,7 @@ def create_hitor_calibration(output_filename, plot_pixel_calibrations=False):
                 calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 2] = np.std(tot)
                 calibration_data[actual_col - 1, actual_row - 1, inner_loop_scan_parameter_index, 3] = np.std(tdc)
 
-                pbar.update(index - pbar.n)
+                pbar.update(index - pbar.n + 1)
             pbar.close()
 
             calibration_data_out = calibration_data_file.create_carray(calibration_data_file.root, name='HitOrCalibration', title='Hit OR calibration data', atom=tb.Atom.from_dtype(calibration_data.dtype), shape=calibration_data.shape, filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
