@@ -3,6 +3,7 @@ build: false  # Tell appveyor to not use msbuild
 environment:
   matrix:
     - PYTHON: 2.7
+    - PYTHON: 3.7
 
 platform:
   - x86
