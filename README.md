@@ -61,9 +61,9 @@ Run the **following commands** to install the packages:
   pip install "basil_daq>=2.4.12,<4.0.0"
   ```
 
-[pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (>=1.3.0) is required:
+[pyBAR FEI4 Interpreter](https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter) (>=1.5,<2.0) is required:
   ```
-  pip install git+https://github.com/SiLab-Bonn/pyBAR_fei4_interpreter@development
+  pip install "pyBAR_fei4_interpreter>=1.5,<2.0"
   ```
 
 [Pixel Clusterizer](https://github.com/SiLab-Bonn/pixel_clusterizer) (>=3.1,<3.2) is required:
