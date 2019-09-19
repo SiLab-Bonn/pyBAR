@@ -2,21 +2,30 @@ build: false  # Tell appveyor to not use msbuild
 
 environment:
   matrix:
-    - PYTHON: 2.7
-    - PYTHON: 3.7
+    - PYTHON_VERSION: 2.7
+      MINICONDA: C:\Miniconda
+      PYTHON_ARCH: "32"
+    - PYTHON_VERSION: 2.7
+      MINICONDA: C:\Miniconda-x64
+      PYTHON_ARCH: "64"
+    - PYTHON_VERSION: 3.7
+      MINICONDA: C:\Miniconda37
+      PYTHON_ARCH: "32"
+    - PYTHON_VERSION: 3.7
+      MINICONDA: C:\Miniconda37-x64
+      PYTHON_ARCH: "64"
 
-platform:
-  - x86
-  - x64
+# platform:
+#   - x86
+#   - x64
 
 init:
-  - "ECHO %PYTHON%"
-  - ps: Start-FileDownload 'http://download.microsoft.com/download/7/9/6/796EF2E4-801B-4FC4-AB28-B59FBF6D907B/VCForPython27.msi' C:\VCForPython27.msi; echo "Done"
-  - cmd: msiexec /i C:\VCForPython27.msi /quiet /qn
+  # - ps: Start-FileDownload 'http://download.microsoft.com/download/7/9/6/796EF2E4-801B-4FC4-AB28-B59FBF6D907B/VCForPython27.msi' C:\VCForPython27.msi; echo "Done"
+  # - cmd: msiexec /i C:\VCForPython27.msi /quiet /qn
 
 install:
   # Miniconda setup + necessary external packages
-  - set PATH=C:\Miniconda;C:\Miniconda\Scripts;%PATH%  # miniconda is already installed on appveyor: https://github.com/appveyor/ci/issues/359
+  - set PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - conda update conda --yes
   - conda info -a
   - conda install --yes bitarray cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
