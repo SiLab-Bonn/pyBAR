@@ -127,7 +127,7 @@ class TestAnalysis(unittest.TestCase):
             del interpreter
             del histogram
             del clusterizer
-            pbar.update(index - pbar.n)
+            pbar.update(index - pbar.n + 1)
         pbar.close()
 
     def test_data_alignement(self):  # Test if the data alignment is correct (important to detect 32/64 bit related issues)
