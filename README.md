@@ -128,7 +128,7 @@ The pyBAR readout system was extensively used for various high-energy particle p
 ### Proceedings and Papers
 
 1. Serially powered pixel detector prototype (at Bonn) for the ATLAS High-Luminosity LHC (HL-LHC) upgrade (24 FEI4 chips). DOI: [10.1088/1748-0221/12/03/c03045](https://doi.org/10.1088/1748-0221/12/03/c03045), DOI: [10.1088/1748-0221/12/03/p03004](https://doi.org/10.1088/1748-0221/12/03/p03004)
-2. Stave 0 demonstrator (at CERN) for the ATLAS High-Luminosity LHC (HL-LHC) upgrade (28 FEI4 chips): document in preparation
+2. Readout and test system for the Stave 0 demonstrator and outer barrel stave assembly at CERN for the ATLAS High-Luminosity LHC (HL-LHC) upgrade (28 FEI4 chips): document in preparation
 3. [SHiP experiment](https://cds.cern.ch/record/2286844) at the CERN Super Proton Synchrotron (SPS) facility to help with the track reconstruction (24 FEI4 chips): document in preparation
 4. BEAST/TPC experiment at the SuperKEKB facility to measure the beam/radiation background (8 FEI4 chips). DOI: [10.1016/j.nima.2018.05.071](https://doi.org/10.1016/j.nima.2018.05.071)
 5. BEAST/FANGS experiment at the SuperKEKB facility to measure the beam/radiation background (15 FEI4 chips): document in preparation
