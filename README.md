@@ -1,5 +1,5 @@
 
-# pyBAR [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=v2.x)](https://travis-ci.org/SiLab-Bonn/pyBAR/branches) [![Build Status](https://ci.appveyor.com/api/projects/status/github/SiLab-Bonn/pyBAR?branch=v2.x&svg=true)](https://ci.appveyor.com/project/laborleben/pybar-71xwl?branch=v2.x)
+# pyBAR - Single Chip Branch [![Build Status](https://travis-ci.org/SiLab-Bonn/pyBAR.svg?branch=v2.x)](https://travis-ci.org/SiLab-Bonn/pyBAR/branches) [![Build Status](https://ci.appveyor.com/api/projects/status/github/SiLab-Bonn/pyBAR?branch=v2.x&svg=true)](https://ci.appveyor.com/project/laborleben/pybar-71xwl?branch=v2.x)
 
 pyBAR - Bonn ATLAS Readout in Python
 
