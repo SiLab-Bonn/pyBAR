@@ -60,7 +60,7 @@
           <Attr Name="UsedIn" Val="implementation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/utils/3_stage_synchronizer.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/utils/3_stage_synchronizer.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
@@ -88,175 +88,175 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/utils/bus_to_ip.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/utils/bus_to_ip.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/utils/cdc_pulse_sync.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/utils/cdc_pulse_sync.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/utils/cdc_syncfifo.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/utils/cdc_syncfifo.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/utils/clock_divider.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/utils/clock_divider.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/cmd_seq/cmd_seq.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/cmd_seq/cmd_seq.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/cmd_seq/cmd_seq_core.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/cmd_seq/cmd_seq_core.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/utils/ddr_des.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/utils/ddr_des.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/fei4_rx/decode_8b10b.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/fei4_rx/decode_8b10b.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/fei4_rx/fei4_rx.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/fei4_rx/fei4_rx.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/fei4_rx/fei4_rx_core.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/fei4_rx/fei4_rx_core.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/utils/fifo_32_to_8.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/utils/fifo_32_to_8.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/utils/flag_domain_crossing.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/utils/flag_domain_crossing.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/utils/generic_fifo.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/utils/generic_fifo.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/gpio/gpio.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/gpio/gpio.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/fei4_rx/rec_sync.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/fei4_rx/rec_sync.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/fei4_rx/receiver_logic.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/fei4_rx/receiver_logic.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/utils/rgmii_io.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/utils/rgmii_io.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/rrp_arbiter/rrp_arbiter.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/rrp_arbiter/rrp_arbiter.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/fei4_rx/sync_master.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/fei4_rx/sync_master.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/utils/tcp_to_bus.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/utils/tcp_to_bus.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/tdc_s3/tdc_s3.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/tdc_s3/tdc_s3.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/tdc_s3/tdc_s3_core.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/tdc_s3/tdc_s3_core.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/tlu/tlu_controller.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/tlu/tlu_controller.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/tlu/tlu_controller_core.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/tlu/tlu_controller_core.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../basil/firmware/modules/tlu/tlu_controller_fsm.v">
+      <File Path="$PPRDIR/../../../../basil/basil/firmware/modules/tlu/tlu_controller_fsm.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>

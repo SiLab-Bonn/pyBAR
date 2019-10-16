@@ -1,7 +1,3 @@
-
-
-
-
 #NET "Clk100"   LOC =  "AA3" | IOSTANDARD = "LVCMOS15"; 100MHz
 set_property PACKAGE_PIN AA3 [get_ports clkin]
 set_property IOSTANDARD LVCMOS15 [get_ports clkin]
