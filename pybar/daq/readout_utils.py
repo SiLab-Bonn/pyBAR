@@ -1,8 +1,11 @@
 import logging
 import os
+import time
 
 import numpy as np
 import tables as tb
+
+from pybar import __version__ as pybar_version
 
 
 class NameValue(tb.IsDescription):
@@ -10,7 +13,7 @@ class NameValue(tb.IsDescription):
     value = tb.StringCol(4 * 1024, pos=1)
 
 
-def save_configuration_dict(h5_file, configuation_name, configuration, **kwargs):
+def save_configuration_dict(h5_file, configuation_name, configuration, date_created=None, **kwargs):
     '''Stores any configuration dictionary to HDF5 file.
 
     Parameters
@@ -38,6 +41,13 @@ def save_configuration_dict(h5_file, configuation_name, configuration, **kwargs)
             row_scan_param['name'] = key
             row_scan_param['value'] = str(value)
             row_scan_param.append()
+        if isinstance(date_created, float):
+            scan_param_table.attrs.date_created = time.asctime(time.localtime(date_created))
+        elif isinstance(date_created, time.struct_time):
+            time.asctime(date_created)
+        else:
+            scan_param_table.attrs.date_created = time.asctime()
+        scan_param_table.attrs.pybar_version = pybar_version
         scan_param_table.flush()
 
     if isinstance(h5_file, tb.file.File):
