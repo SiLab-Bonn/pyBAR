@@ -448,7 +448,7 @@ for (h = 0; h < 8; h = h + 1) begin: cmd_gen
 
     OBUFDS #(
         .IOSTANDARD("LVDS_25"),
-        .SLEW("SLOW")
+        .SLEW("FAST")
     ) OBUFDS_inst_cmd_clk_out_h (
         .O(CMD_CLK_P[h]),
         .OB(CMD_CLK_N[h]),
@@ -457,7 +457,7 @@ for (h = 0; h < 8; h = h + 1) begin: cmd_gen
 
     OBUFDS #(
         .IOSTANDARD("LVDS_25"),
-        .SLEW("SLOW")
+        .SLEW("FAST")
     ) OBUFDS_inst_cmd_data_h (
         .O(CMD_DATA_P[h]),
         .OB(CMD_DATA_N[h]),

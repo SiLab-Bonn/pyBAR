@@ -443,7 +443,7 @@ always@(posedge CLK320)
 
 OBUFDS #(
     .IOSTANDARD("LVDS_25"),
-    .SLEW("SLOW")
+    .SLEW("FAST")
 ) OBUFDS_inst_cmd_clk_out (
     .O(CMD_CLK_P),
     .OB(CMD_CLK_N),
@@ -452,7 +452,7 @@ OBUFDS #(
 
 OBUFDS #(
     .IOSTANDARD("LVDS_25"),
-    .SLEW("SLOW")
+    .SLEW("FAST")
 ) OBUFDS_inst_cmd_data (
     .O(CMD_DATA_P),
     .OB(CMD_DATA_N),
