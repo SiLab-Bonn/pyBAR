@@ -138,3 +138,4 @@ The pyBAR readout system was extensively used for various high-energy particle p
 9. Various other detector tests at [CERN SPS](http://sba.web.cern.ch) (Geneva, Switzerland), [DESY II](https://testbeam.desy.de) (Hamburg, Germany), and [ELSA](https://www-elsa.physik.uni-bonn.de) (Bonn, Germany).
     - Silicon detecors: DOI: [10.1088/1748-0221/12/06/P06020](https://dx.doi.org/10.1088/1748-0221/12/06/P06020)
     - 3D pCVD diamond detectors: document submitted
+10. EUDAQ - a data acquisition software framework for common beam telescopes. DOI: [10.1088/1748-0221/15/01/P01038](https://doi.org/10.1088/1748-0221/15/01/P01038)
