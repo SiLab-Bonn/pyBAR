@@ -41,10 +41,10 @@ install:
   - export PATH="$HOME/miniconda/bin:$PATH"
   - conda update --yes conda
   - conda info -a
-  - conda create --yes -n test-environment python="$TRAVIS_PYTHON_VERSION" bitarray cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy
+  - conda create --yes -n test-environment python="$TRAVIS_PYTHON_VERSION" bitarray cython ipython matplotlib mock nose numba numpy pyqt pyserial pytables pyyaml pyzmq qtpy scipy tqdm
   - source activate test-environment
 #  - cd "$COCOTB" && pip install -e . && cd -
-  - pip install pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0 tqdm cocotb
+  - pip install pyvisa pyvisa-py git+https://github.com/pyqtgraph/pyqtgraph.git@pyqtgraph-0.10.0 cocotb
   - pip install pyusb
   - pip install pySiLibUSB
   - pip install "basil_daq>=2.4.12,<4.0.0"
