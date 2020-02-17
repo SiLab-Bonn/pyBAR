@@ -88,9 +88,13 @@ def create_threshold_calibration(scan_base_file_name, create_plots=True):  # Cre
     first_scan_base_file_name = scan_base_file_name if isinstance(scan_base_file_name, basestring) else scan_base_file_name[0]  # multilpe scan_base_file_names for multiple runs
 
     with tb.open_file(first_scan_base_file_name + '.h5', mode="r") as in_file_h5:  # deduce scan parameters from the first (and often only) scan base file name
-        ignore_columns = in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'ignore_columns')]['value'][0]
+        try:
+            ignore_columns = in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'ignore_columns')]['value'][0]
+        except Exception:
+            ignore_columns = []
+        else:
+            ignore_columns = ast.literal_eval(ignore_columns)
         parameter_name = in_file_h5.root.configuration.run_conf[:][np.where(in_file_h5.root.configuration.run_conf[:]['name'] == 'scan_parameters')]['value'][0]
-        ignore_columns = ast.literal_eval(ignore_columns)
         parameter_name = ast.literal_eval(parameter_name)[1][0]
 
     calibration_file = first_scan_base_file_name + '_calibration'
