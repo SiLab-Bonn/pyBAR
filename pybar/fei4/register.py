@@ -462,9 +462,9 @@ class FEI4Register(object):
             #    command_bitvector += kwargs[command_name]
             else:
                 raise ValueError("Cannot process command part %s" % part)
-        if command_bitvector.length() != command_object['bitlength']:
+        if len(command_bitvector) != command_object['bitlength']:
             raise ValueError("Command has unexpected length")
-        if command_bitvector.length() == 0:
+        if len(command_bitvector) == 0:
             raise ValueError("Command has length 0")
         return command_bitvector
 
@@ -1113,8 +1113,8 @@ def bitarray_from_value(value, size=None, fmt='Q'):
     ba = bitarray(endian='little')
     ba.frombytes(struct.pack(fmt, value))
     if size is not None:
-        if size > ba.length():
-            ba.extend((size - ba.length()) * [0])
+        if size > len(ba):
+            ba.extend((size - len(ba)) * [0])
         else:
             ba = ba[:size]
     ba.reverse()

@@ -65,7 +65,7 @@ class FEI4RegisterUtils(object):
             else:
                 for command in commands_iter:
                     concatenated_cmd_tmp = self.concatenate_commands((concatenated_cmd, command), byte_padding=byte_padding)
-                    if concatenated_cmd_tmp.length() > self.command_memory_byte_size * 8:
+                    if len(concatenated_cmd_tmp) > self.command_memory_byte_size * 8:
                         self.send_command(command=concatenated_cmd, repeat=repeat, wait_for_finish=wait_for_finish, set_length=True, clear_memory=clear_memory, use_timeout=use_timeout)
                         concatenated_cmd = command
                     else:
@@ -77,7 +77,7 @@ class FEI4RegisterUtils(object):
             if repeat is not None:
                 self.dut['TX']['CMD_REPEAT'] = repeat
             for command in commands:
-                max_length = max(command.length(), max_length)
+                max_length = max(len(command), max_length)
                 self.send_command(command=command, repeat=None, wait_for_finish=wait_for_finish, set_length=True, clear_memory=False, use_timeout=use_timeout)
             if clear_memory:
                 self.clear_command_memory(length=max_length)
@@ -100,7 +100,7 @@ class FEI4RegisterUtils(object):
         self.set_command(self.register.get_commands("zeros", length=(self.command_memory_byte_size * 8) if length is None else length)[0], set_length=False)
 
     def set_command(self, command, set_length=True, byte_offset=0):
-        command_length = command.length()
+        command_length = len(command)
         # set command bit length
         if set_length:
             self.dut['TX']['CMD_SIZE'] = command_length
